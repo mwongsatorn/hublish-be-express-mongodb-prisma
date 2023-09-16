@@ -1,0 +1,22 @@
+name: server
+
+services:
+  mongodb:
+    build: ./
+    container_name: mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_ROOT_DATABASE: hublish
+      MONGO_REPLICA_HOST: localhost
+      MONGO_REPLICA_PORT: 27017
+    volumes:
+      - db:/data/db
+      - db:/data/configdb
+    ports:
+      - 27017:27017
+volumes:
+  db:
+
+
