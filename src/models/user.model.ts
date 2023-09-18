@@ -17,3 +17,12 @@ export const SignUpSchema = z.object({
     })
     .email({ message: "This is invalid email" }),
 });
+
+export const LogInSchema = z.object({
+  username: z.string({
+    required_error: "Username is required",
+  }),
+  password: z.string({
+    required_error: "Password is required",
+  }),
+});
