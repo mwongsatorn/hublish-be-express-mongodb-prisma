@@ -1,11 +1,14 @@
-import express from 'express'
+import express from "express";
+import usersRoute from "./routes/user.route";
 
-const app = express()
+const app = express();
 
-app.use(express.json())
+app.use(express.json());
 
-app.get('/', async (req, res) => {
-  res.send("Hello from express")
-})
+app.use("/api/users", usersRoute);
+
+app.get("/", (req, res) => {
+  res.send("Hello from express");
+});
 
 app.listen(8080);
