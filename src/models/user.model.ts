@@ -1,16 +1,19 @@
 import { z } from "zod";
 
-const UserSchema = z.object({
+export const SignUpSchema = z.object({
   username: z
-    .string()
+    .string({
+      required_error: "Username is required",
+    })
     .min(8, { message: "Username must be at least 8 characters" }),
   password: z
-    .string()
+    .string({
+      required_error: "Password is required",
+    })
     .min(8, { message: "Password must be at least 8 characters" }),
-  email: z.string().email({ message: "This is invalid email" }),
-  bio: z.string(),
-  image: z.string(),
+  email: z
+    .string({
+      required_error: "Email is required",
+    })
+    .email({ message: "This is invalid email" }),
 });
-
-export default UserSchema;
-export type User = z.infer<typeof UserSchema>;

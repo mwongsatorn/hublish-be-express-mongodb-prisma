@@ -2,12 +2,12 @@ import "dotenv/config";
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
-import UserSchema, { type User } from "../models/user.model";
+import { SignUpSchema } from "../models/user.model";
 
 const prisma = new PrismaClient();
 
-async function signup(req: Request, res: Response) {
-  const user = UserSchema.safeParse(req.body);
+async function signUp(req: Request, res: Response) {
+  const user = SignUpSchema.safeParse(req.body);
   if (!user.success) {
     res.status(400).send(user.error);
     return;
@@ -37,4 +37,6 @@ async function signup(req: Request, res: Response) {
   res.status(200).send({ message: "User has been created" });
 }
 
-export default { signup };
+export default {
+  signUp,
+};
