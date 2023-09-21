@@ -13,14 +13,14 @@ async function signUp(req: Request, res: Response) {
     res.status(400).send(user.error);
     return;
   }
-  const hasUser = await prisma.user.findFirst({
+  const foundUser = await prisma.user.findFirst({
     where: {
       username: user.data.username,
       email: user.data.email,
     },
   });
 
-  if (hasUser) {
+  if (foundUser) {
     res.status(400).send({ error: "User is already signed up" });
     return;
   }
@@ -44,20 +44,20 @@ async function logIn(req: Request, res: Response) {
     res.status(401).send(user.error);
     return;
   }
-  const hasUser = await prisma.user.findFirst({
+  const foundUser = await prisma.user.findFirst({
     where: {
       username: user.data.username,
     },
   });
 
-  if (!hasUser) {
+  if (!foundUser) {
     res.status(401).send({ message: "This user does not exist" });
     return;
   }
 
   const isSamePassword = await bcrypt.compare(
     user.data.password,
-    hasUser.password
+    foundUser.password
   );
 
   if (!isSamePassword) {
@@ -65,11 +65,32 @@ async function logIn(req: Request, res: Response) {
     return;
   }
 
-  const token = jwt.sign(
-    { username: hasUser.username },
-    process.env.JWT_SECRETKEY!
+  const accessToken = jwt.sign(
+    { username: foundUser.username },
+    process.env.ACCESS_TOKEN_KEY!,
+    { expiresIn: "1m" }
   );
-  res.status(200).send({ token: token });
+
+  const refreshToken = jwt.sign(
+    { username: foundUser.username },
+    process.env.REFRESH_TOKEN_KEY!,
+    { expiresIn: "7days" }
+  );
+
+  await prisma.user.update({
+    where: {
+      username: foundUser.username,
+    },
+    data: {
+      refreshToken: refreshToken,
+    },
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+  });
+
+  res.status(200).send({ accessToken: accessToken });
 }
 
 export default {

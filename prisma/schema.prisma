@@ -11,10 +11,11 @@ datasource db {
 }
 
 model User {
-  id       String @id @default(auto()) @map("_id") @db.ObjectId
-  username String @unique
-  password String
-  email    String @unique
-  bio      String @default("")
-  image    String @default("")
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  username     String @unique
+  password     String
+  email        String @unique
+  bio          String @default("")
+  image        String @default("")
+  refreshToken String @default("")
 }
