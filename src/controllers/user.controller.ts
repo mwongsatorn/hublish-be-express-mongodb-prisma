@@ -80,7 +80,7 @@ async function logIn(req: Request, res: Response) {
   const refreshToken = jwt.sign(
     { username: foundUser.username },
     process.env.REFRESH_TOKEN_KEY!,
-    { expiresIn: "7days" }
+    { expiresIn: "1days" }
   );
 
   await prisma.user.update({
@@ -94,6 +94,7 @@ async function logIn(req: Request, res: Response) {
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000
   });
 
   res.status(200).send({ status: true, accessToken: accessToken });
