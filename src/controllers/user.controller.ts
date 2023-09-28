@@ -53,9 +53,7 @@ async function logIn(req: Request, res: Response) {
   });
 
   if (!foundUser) {
-    res
-      .status(401)
-      .send({ status: false, error: "This user does not exist" });
+    res.status(401).send({ status: false, error: "This user does not exist" });
     return;
   }
 
@@ -94,11 +92,24 @@ async function logIn(req: Request, res: Response) {
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: "lax",
+    path: "/"
   });
 
-  res.status(200).send({ status: true, accessToken: accessToken });
+  res.status(200).send({
+    status: true,
+    user: {
+      username: foundUser.username,
+      email: foundUser.email,
+      bio: foundUser.bio,
+      name: foundUser.name,
+      accessToken: accessToken,
+    },
+  });
 }
+
+
 
 export default {
   signUp,
