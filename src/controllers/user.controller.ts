@@ -94,7 +94,7 @@ async function logIn(req: Request, res: Response) {
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000,
     sameSite: "lax",
-    path: "/"
+    path: "/",
   });
 
   res.status(200).send({
@@ -109,9 +109,34 @@ async function logIn(req: Request, res: Response) {
   });
 }
 
+interface UserRequest extends Request {
+  username: string;
+}
 
+async function profile(req: Request, res: Response) {
+  const { username } = req as UserRequest;
+  const foundUser = await prisma.user.findFirst({
+    where: {
+      username: username,
+    },
+  });
+  if (!foundUser) {
+    res.status(400).send({ status: false, error: "Something went wrong." });
+    return;
+  }
+  res.status(200).send({
+    status: true,
+    profile: {
+      username: foundUser.username,
+      name: foundUser.name,
+      email: foundUser.email,
+      bio: foundUser.bio,
+    },
+  });
+}
 
 export default {
   signUp,
   logIn,
+  profile,
 };
