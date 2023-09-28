@@ -15,6 +15,7 @@ model User {
   username     String @unique
   password     String
   email        String @unique
+  name          String @default("")
   bio          String @default("")
   image        String @default("")
   refreshToken String @default("")
