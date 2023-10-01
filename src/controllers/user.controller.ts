@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 async function signUp(req: Request, res: Response) {
   const user = SignUpSchema.safeParse(req.body);
   if (!user.success) {
-    res.status(400).send({ status: false, error: "Bad request" });
+    res.sendStatus(400);
     return;
   }
   const foundUser = await prisma.user.findFirst({
@@ -22,9 +22,7 @@ async function signUp(req: Request, res: Response) {
   });
 
   if (foundUser) {
-    res
-      .status(200)
-      .send({ success: false, error: "User is already signed up" });
+    res.status(200).send({ error: "User is already signed up" });
     return;
   }
 
@@ -38,13 +36,13 @@ async function signUp(req: Request, res: Response) {
       password: hashedPassword,
     },
   });
-  res.status(201).send({ status: true, message: "Sign up successfully" });
+  res.sendStatus(201);
 }
 
 async function logIn(req: Request, res: Response) {
   const user = LogInSchema.safeParse(req.body);
   if (!user.success) {
-    res.status(401).send(user.error);
+    res.sendStatus(400);
     return;
   }
   const foundUser = await prisma.user.findFirst({
@@ -54,7 +52,7 @@ async function logIn(req: Request, res: Response) {
   });
 
   if (!foundUser) {
-    res.status(401).send({ status: false, error: "This user does not exist" });
+    res.sendStatus(401);
     return;
   }
 
@@ -64,9 +62,7 @@ async function logIn(req: Request, res: Response) {
   );
 
   if (!isSamePassword) {
-    res
-      .status(401)
-      .send({ status: false, error: "Username or password is incorrect" });
+    res.sendStatus(401);
     return;
   }
 
@@ -99,7 +95,6 @@ async function logIn(req: Request, res: Response) {
   });
 
   res.status(200).send({
-    status: true,
     user: {
       username: foundUser.username,
       email: foundUser.email,
@@ -122,11 +117,10 @@ async function profile(req: Request, res: Response) {
     },
   });
   if (!foundUser) {
-    res.status(400).send({ status: false, error: "Something went wrong." });
+    res.sendStatus(400);
     return;
   }
   res.status(200).send({
-    status: true,
     profile: {
       username: foundUser.username,
       name: foundUser.name,
