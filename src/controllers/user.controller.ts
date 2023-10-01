@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
 import { SignUpSchema, LogInSchema } from "../models/user.model";
 
 const prisma = new PrismaClient();
@@ -135,8 +136,38 @@ async function profile(req: Request, res: Response) {
   });
 }
 
+interface UserPayload extends jwt.JwtPayload {
+  username: string;
+}
+
+function refreshAccessToken(req: Request, res: Response) {
+  try {
+    const CookiesSchema = z.object({
+      refreshToken: z.string(),
+    });
+
+    const validateCookies = CookiesSchema.safeParse(req.cookies);
+
+    if (!validateCookies.success) return res.sendStatus(401);
+
+    const { refreshToken } = validateCookies.data;
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_KEY!
+    ) as UserPayload;
+    const accessToken = jwt.sign(
+      { username: decoded.username },
+      process.env.ACCESS_TOKEN_KEY!
+    );
+    res.status(200).send({ accessToken: accessToken });
+  } catch (e) {
+    res.sendStatus(403);
+  }
+}
+
 export default {
   signUp,
   logIn,
   profile,
+  refreshAccessToken,
 };
