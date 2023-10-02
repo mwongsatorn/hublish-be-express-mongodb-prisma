@@ -26,3 +26,7 @@ export const LogInSchema = z.object({
     required_error: "Password is required",
   }),
 });
+
+export const CookiesSchema = z.object({
+  refreshToken: z.string(),
+});

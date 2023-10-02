@@ -9,6 +9,8 @@ router.post("/login", userController.logIn);
 
 router.get("/profile", validateAccessToken, userController.profile);
 
-router.get("/refresh", userController.refreshAccessToken)
+router.get("/refresh", userController.refreshAccessToken);
+
+router.delete("/logout", userController.logOut);
 
 export default router;

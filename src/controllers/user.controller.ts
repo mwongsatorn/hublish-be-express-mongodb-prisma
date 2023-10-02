@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { SignUpSchema, LogInSchema } from "../models/user.model";
+import { SignUpSchema, LogInSchema, CookiesSchema } from "../models/user.model";
 
 const prisma = new PrismaClient();
 
@@ -136,10 +136,6 @@ interface UserPayload extends jwt.JwtPayload {
 
 function refreshAccessToken(req: Request, res: Response) {
   try {
-    const CookiesSchema = z.object({
-      refreshToken: z.string(),
-    });
-
     const validateCookies = CookiesSchema.safeParse(req.cookies);
 
     if (!validateCookies.success) return res.sendStatus(401);
@@ -159,9 +155,39 @@ function refreshAccessToken(req: Request, res: Response) {
   }
 }
 
+async function logOut(req: Request, res: Response) {
+  try {
+    const validateCookies = CookiesSchema.safeParse(req.cookies);
+
+    if (!validateCookies.success) return res.sendStatus(401);
+
+    const { refreshToken } = validateCookies.data;
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_KEY!
+    ) as UserPayload;
+
+    const foundUser = await prisma.user.update({
+      where: {
+        username: decoded.username,
+      },
+      data: {
+        refreshToken: "",
+      },
+    });
+
+    if (!foundUser) res.sendStatus(401);
+    res.clearCookie("refreshToken");
+    res.sendStatus(200);
+  } catch (e) {
+    res.sendStatus(403);
+  }
+}
+
 export default {
   signUp,
   logIn,
   profile,
   refreshAccessToken,
+  logOut,
 };
