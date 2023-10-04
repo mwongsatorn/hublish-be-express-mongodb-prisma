@@ -9,6 +9,8 @@ router.post("/login", userController.logIn);
 
 router.get("/profile", validateAccessToken, userController.profile);
 
+router.put("/settings/email", validateAccessToken, userController.changeEmail);
+
 router.get("/refresh", userController.refreshAccessToken);
 
 router.delete("/logout", userController.logOut);

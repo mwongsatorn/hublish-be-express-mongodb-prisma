@@ -30,3 +30,8 @@ export const LogInSchema = z.object({
 export const CookiesSchema = z.object({
   refreshToken: z.string(),
 });
+
+export const ChangeEmailSchema = z.object({
+  password: z.string().nonempty({ message: "This field can not be empty" }),
+  newEmail: z.string().email({ message: "This is an invalid email" }),
+});
