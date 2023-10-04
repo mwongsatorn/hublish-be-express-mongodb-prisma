@@ -42,3 +42,12 @@ export const ChangePasswordSchema = z.object({
     .nonempty({ message: "This field can not be empty" }),
   newPassword: z.string().nonempty({ message: "This field can not be empty" }),
 });
+
+export const ChangeProfileSchema = z.object({
+  name: z.string().max(70, {
+    message: "Your name can not be more than 70 characters.",
+  }),
+  bio: z.string().max(160, {
+    message: "Your bio can not be more than 160 characters.",
+  }),
+});

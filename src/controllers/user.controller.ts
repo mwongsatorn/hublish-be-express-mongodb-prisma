@@ -9,6 +9,7 @@ import {
   CookiesSchema,
   ChangeEmailSchema,
   ChangePasswordSchema,
+  ChangeProfileSchema,
 } from "../models/user.model";
 
 const prisma = new PrismaClient();
@@ -261,6 +262,31 @@ async function changePassword(req: Request, res: Response) {
   res.sendStatus(200);
 }
 
+async function changeProfile(req: Request, res: Response) {
+  const validateBody = ChangeProfileSchema.safeParse(req.body);
+  if (!validateBody.success) return res.sendStatus(400);
+
+  const { username } = req as UserRequest;
+  const foundUser = await prisma.user.findFirst({
+    where: {
+      username: username,
+    },
+  });
+
+  if (!foundUser) return res.sendStatus(404);
+
+  await prisma.user.update({
+    where: {
+      username: username,
+    },
+    data: {
+      ...validateBody.data,
+    },
+  });
+
+  res.sendStatus(200);
+}
+
 export default {
   signUp,
   logIn,
@@ -269,4 +295,5 @@ export default {
   logOut,
   changeEmail,
   changePassword,
+  changeProfile,
 };

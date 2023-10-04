@@ -16,6 +16,12 @@ router.put(
   userController.changePassword
 );
 
+router.put(
+  "/settings/profile",
+  validateAccessToken,
+  userController.changeProfile
+);
+
 router.get("/refresh", userController.refreshAccessToken);
 
 router.delete("/logout", userController.logOut);
