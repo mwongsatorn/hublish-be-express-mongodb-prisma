@@ -10,6 +10,11 @@ router.post("/login", userController.logIn);
 router.get("/profile", validateAccessToken, userController.profile);
 
 router.put("/settings/email", validateAccessToken, userController.changeEmail);
+router.put(
+  "/settings/password",
+  validateAccessToken,
+  userController.changePassword
+);
 
 router.get("/refresh", userController.refreshAccessToken);
 

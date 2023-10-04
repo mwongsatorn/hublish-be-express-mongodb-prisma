@@ -35,3 +35,10 @@ export const ChangeEmailSchema = z.object({
   password: z.string().nonempty({ message: "This field can not be empty" }),
   newEmail: z.string().email({ message: "This is an invalid email" }),
 });
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z
+    .string()
+    .nonempty({ message: "This field can not be empty" }),
+  newPassword: z.string().nonempty({ message: "This field can not be empty" }),
+});

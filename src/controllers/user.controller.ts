@@ -3,12 +3,12 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { z } from "zod";
 import {
   SignUpSchema,
   LogInSchema,
   CookiesSchema,
   ChangeEmailSchema,
+  ChangePasswordSchema,
 } from "../models/user.model";
 
 const prisma = new PrismaClient();
@@ -228,6 +228,39 @@ async function changeEmail(req: Request, res: Response) {
   res.sendStatus(200);
 }
 
+async function changePassword(req: Request, res: Response) {
+  const validateBody = ChangePasswordSchema.safeParse(req.body);
+  if (!validateBody.success) return res.sendStatus(400);
+  const { username } = req as UserRequest;
+  const foundUser = await prisma.user.findFirst({
+    where: {
+      username: username,
+    },
+  });
+
+  if (!foundUser) return res.sendStatus(404);
+
+  const isSamePassword = await bcrypt.compare(
+    validateBody.data.currentPassword,
+    foundUser.password
+  );
+  if (!isSamePassword) return res.sendStatus(401);
+
+  const salt = await bcrypt.genSalt(12);
+  const hashedPassword = await bcrypt.hash(validateBody.data.newPassword, salt);
+
+  await prisma.user.update({
+    where: {
+      username: username,
+    },
+    data: {
+      password: hashedPassword,
+    },
+  });
+
+  res.sendStatus(200);
+}
+
 export default {
   signUp,
   logIn,
@@ -235,4 +268,5 @@ export default {
   refreshAccessToken,
   logOut,
   changeEmail,
+  changePassword,
 };
