@@ -16,10 +16,8 @@ const prisma = new PrismaClient();
 
 async function signUp(req: Request, res: Response) {
   const user = SignUpSchema.safeParse(req.body);
-  if (!user.success) {
-    res.sendStatus(400);
-    return;
-  }
+  if (!user.success) return res.sendStatus(400);
+
   const foundUser = await prisma.user.findFirst({
     where: {
       username: user.data.username,
@@ -27,10 +25,8 @@ async function signUp(req: Request, res: Response) {
     },
   });
 
-  if (foundUser) {
-    res.status(200).send({ error: "User is already signed up" });
-    return;
-  }
+  if (foundUser)
+    return res.status(200).send({ error: "User is already signed up" });
 
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(user.data.password, salt);
@@ -73,20 +69,20 @@ async function logIn(req: Request, res: Response) {
   }
 
   const accessToken = jwt.sign(
-    { username: foundUser.username },
+    { id: foundUser.id },
     process.env.ACCESS_TOKEN_KEY!,
     { expiresIn: "1m" }
   );
 
   const refreshToken = jwt.sign(
-    { username: foundUser.username },
+    { id: foundUser.id },
     process.env.REFRESH_TOKEN_KEY!,
     { expiresIn: "1days" }
   );
 
   await prisma.user.update({
     where: {
-      username: foundUser.username,
+      id: foundUser.id,
     },
     data: {
       refreshToken: refreshToken,
@@ -112,14 +108,14 @@ async function logIn(req: Request, res: Response) {
 }
 
 interface UserRequest extends Request {
-  username: string;
+  id: string;
 }
 
 async function profile(req: Request, res: Response) {
-  const { username } = req as UserRequest;
+  const { id } = req as UserRequest;
   const foundUser = await prisma.user.findFirst({
     where: {
-      username: username,
+      id: id,
     },
   });
   if (!foundUser) {
@@ -137,7 +133,7 @@ async function profile(req: Request, res: Response) {
 }
 
 interface UserPayload extends jwt.JwtPayload {
-  username: string;
+  id: string;
 }
 
 function refreshAccessToken(req: Request, res: Response) {
@@ -152,7 +148,7 @@ function refreshAccessToken(req: Request, res: Response) {
       process.env.REFRESH_TOKEN_KEY!
     ) as UserPayload;
     const accessToken = jwt.sign(
-      { username: decoded.username },
+      { id: decoded.id },
       process.env.ACCESS_TOKEN_KEY!
     );
     res.status(200).send({ accessToken: accessToken });
@@ -175,7 +171,7 @@ async function logOut(req: Request, res: Response) {
 
     const foundUser = await prisma.user.update({
       where: {
-        username: decoded.username,
+        id: decoded.id,
       },
       data: {
         refreshToken: "",
@@ -193,10 +189,10 @@ async function logOut(req: Request, res: Response) {
 async function changeEmail(req: Request, res: Response) {
   const validateBody = ChangeEmailSchema.safeParse(req.body);
   if (!validateBody.success) return res.sendStatus(400);
-  const { username } = req as UserRequest;
+  const { id } = req as UserRequest;
   const foundUser = await prisma.user.findFirst({
     where: {
-      username: username,
+      id: id,
     },
   });
 
@@ -219,7 +215,7 @@ async function changeEmail(req: Request, res: Response) {
 
   await prisma.user.update({
     where: {
-      username: username,
+      id: id,
     },
     data: {
       email: validateBody.data.newEmail,
@@ -232,10 +228,10 @@ async function changeEmail(req: Request, res: Response) {
 async function changePassword(req: Request, res: Response) {
   const validateBody = ChangePasswordSchema.safeParse(req.body);
   if (!validateBody.success) return res.sendStatus(400);
-  const { username } = req as UserRequest;
+  const { id } = req as UserRequest;
   const foundUser = await prisma.user.findFirst({
     where: {
-      username: username,
+      id: id,
     },
   });
 
@@ -252,7 +248,7 @@ async function changePassword(req: Request, res: Response) {
 
   await prisma.user.update({
     where: {
-      username: username,
+      id: id,
     },
     data: {
       password: hashedPassword,
@@ -266,10 +262,10 @@ async function changeProfile(req: Request, res: Response) {
   const validateBody = ChangeProfileSchema.safeParse(req.body);
   if (!validateBody.success) return res.sendStatus(400);
 
-  const { username } = req as UserRequest;
+  const { id } = req as UserRequest;
   const foundUser = await prisma.user.findFirst({
     where: {
-      username: username,
+      id: id,
     },
   });
 
@@ -277,7 +273,7 @@ async function changeProfile(req: Request, res: Response) {
 
   await prisma.user.update({
     where: {
-      username: username,
+      id: id,
     },
     data: {
       ...validateBody.data,

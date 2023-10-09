@@ -3,10 +3,10 @@ import jwt from "jsonwebtoken";
 import "dotenv/config";
 
 interface UserRequest extends Request {
-  username: string;
+  id: string;
 }
 interface UserPayload extends jwt.JwtPayload {
-  username: string
+  id: string;
 }
 
 export function validateAccessToken(
@@ -16,15 +16,18 @@ export function validateAccessToken(
 ) {
   try {
     if (!req.headers["authorization"]) {
-      res.status(401).send({ status: false, error: "Unauthorized" });
+      res.status(401).send({ error: "No access token" });
       return;
     }
 
     const token = req.headers.authorization.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_KEY!) as UserPayload
-    (req as UserRequest).username = decoded.username;
+    const decoded = jwt.verify(
+      token,
+      process.env.ACCESS_TOKEN_KEY!
+    ) as UserPayload;
+    (req as UserRequest).id = decoded.id;
     next();
   } catch (e) {
-    res.status(403).send({ status: false, error: "Forbidden" });
+    res.status(401).send({ error: "Token expired" });
   }
 }
