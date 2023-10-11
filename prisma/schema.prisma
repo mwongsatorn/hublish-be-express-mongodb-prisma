@@ -11,12 +11,40 @@ datasource db {
 }
 
 model User {
-  id           String @id @default(auto()) @map("_id") @db.ObjectId
-  username     String @unique
-  password     String
-  email        String @unique
-  name          String @default("")
-  bio          String @default("")
-  image        String @default("")
-  refreshToken String @default("")
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  username      String    @unique
+  password      String
+  email         String    @unique
+  name          String    @default("")
+  bio           String    @default("")
+  image         String    @default("")
+  refreshToken  String    @default("")
+  articles      Article[] @relation("Articles")
+  followings    User[]    @relation("UserFollows", fields: [following_ids], references: [id])
+  following_ids String[]  @unique @db.ObjectId
+  followers     User[]    @relation("UserFollows", fields: [follower_ids], references: [id])
+  follower_ids  String[]  @unique @db.ObjectId
+  comment       Comment?  @relation("CommentAuthor")
+}
+
+model Article {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  slug           String
+  content        String
+  favouriteCount Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  author         User      @relation("Articles", fields: [author_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  author_id      String    @unique @db.ObjectId
+  comments       Comment[] @relation("Comments")
+}
+
+model Comment {
+  id               String  @id @default(auto()) @map("_id") @db.ObjectId
+  body             String
+  aritcle          Article @relation("Comments", fields: [article_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  article_id       String  @unique @db.ObjectId
+  commentAuthor    User    @relation("CommentAuthor", fields: [commentAuthor_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  commentAuthor_id String  @unique @db.ObjectId
 }
