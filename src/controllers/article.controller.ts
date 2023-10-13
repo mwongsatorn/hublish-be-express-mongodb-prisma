@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { CreateArticleSchema } from "../models/article.model";
 import { generateSlug } from "../helpers/generateSlug";
+import { z } from "zod";
 
 const prisma = new PrismaClient();
 
@@ -31,6 +32,22 @@ async function createArticle(req: Request, res: Response) {
   res.status(200).send(createdArticle);
 }
 
+async function getArticle(req: Request, res: Response) {
+  const validateParams = z.object({ slug: z.string() }).safeParse(req.params);
+  if (!validateParams.success) return res.sendStatus(400);
+
+  const foundArticle = await prisma.article.findFirst({
+    where: {
+      slug: validateParams.data.slug,
+    },
+  });
+
+  if (!foundArticle) return res.sendStatus(404);
+
+  res.status(200).send(foundArticle);
+}
+
 export default {
   createArticle,
+  getArticle,
 };

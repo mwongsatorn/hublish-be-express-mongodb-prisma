@@ -5,5 +5,6 @@ import { validateAccessToken } from "../middlewares/validateAccessToken";
 const router = express.Router();
 
 router.post("/", validateAccessToken, articleContoller.createArticle);
+router.get("/:slug", articleContoller.getArticle);
 
 export default router;
