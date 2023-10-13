@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { CreateArticleSchema } from "../models/article.model";
+import { generateSlug } from "../helpers/generateSlug";
 
 const prisma = new PrismaClient();
 
@@ -15,9 +16,11 @@ async function createArticle(req: Request, res: Response) {
     return res.sendStatus(400);
   }
   const { id } = req as ArticleRequest;
-  await prisma.article.create({
+  const slug = generateSlug(article.data.title);
+  const createdArticle = await prisma.article.create({
     data: {
       ...article.data,
+      slug: slug,
       author: {
         connect: {
           id: id,
@@ -25,7 +28,7 @@ async function createArticle(req: Request, res: Response) {
       },
     },
   });
-  res.sendStatus(200);
+  res.status(200).send(createdArticle);
 }
 
 export default {
