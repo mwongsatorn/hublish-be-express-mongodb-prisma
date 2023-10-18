@@ -23,3 +23,6 @@ export const CreateArticleSchema = z.object({
       }
     ),
 });
+
+export type EditArticle = z.infer<typeof EditArticleSchema>;
+export const EditArticleSchema = CreateArticleSchema.partial();

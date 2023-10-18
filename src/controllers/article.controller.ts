@@ -1,7 +1,10 @@
 import "dotenv/config";
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-import { CreateArticleSchema } from "../models/article.model";
+import {
+  CreateArticleSchema,
+  EditArticleSchema,
+} from "../models/article.model";
 import { generateSlug } from "../helpers/generateSlug";
 import { z } from "zod";
 
@@ -47,7 +50,34 @@ async function getArticle(req: Request, res: Response) {
   res.status(200).send(foundArticle);
 }
 
+async function editArticle(req: Request, res: Response) {
+  const validateBody = EditArticleSchema.safeParse(req.body);
+  if (!validateBody.success) return res.sendStatus(400);
+
+  const { id } = req as ArticleRequest;
+
+  const slug = validateBody.data.title
+    ? generateSlug(validateBody.data.title)
+    : null;
+
+  const editedArticle = await prisma.article.update({
+    where: {
+      slug: req.params.slug,
+      author_id: id,
+    },
+    data: {
+      ...validateBody.data,
+      ...(slug && { slug }),
+    },
+  });
+
+  if (!editedArticle) return res.sendStatus(404);
+
+  res.status(200).send(editedArticle);
+}
+
 export default {
   createArticle,
   getArticle,
+  editArticle,
 };
