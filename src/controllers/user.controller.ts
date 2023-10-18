@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { excludeFields } from "../helpers/excludeFields";
 import {
   SignUpSchema,
   LogInSchema,
@@ -25,20 +26,21 @@ async function signUp(req: Request, res: Response) {
     },
   });
 
-  if (foundUser)
-    return res.status(200).send({ error: "User is already signed up" });
+  if (foundUser) return res.sendStatus(409);
 
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(user.data.password, salt);
 
-  await prisma.user.create({
+  const createdUser = await prisma.user.create({
     data: {
       username: user.data.username,
       email: user.data.email,
       password: hashedPassword,
     },
   });
-  res.sendStatus(201);
+
+  const resData = excludeFields(createdUser, ["password", "refreshToken"]);
+  res.status(201).send(resData);
 }
 
 async function logIn(req: Request, res: Response) {
@@ -63,10 +65,7 @@ async function logIn(req: Request, res: Response) {
     foundUser.password
   );
 
-  if (!isSamePassword) {
-    res.sendStatus(401);
-    return;
-  }
+  if (!isSamePassword) return res.sendStatus(401);
 
   const accessToken = jwt.sign(
     { id: foundUser.id },
@@ -96,12 +95,10 @@ async function logIn(req: Request, res: Response) {
     path: "/",
   });
 
+  const resData = excludeFields(foundUser, ["refreshToken", "password"]);
   res.status(200).send({
     user: {
-      username: foundUser.username,
-      email: foundUser.email,
-      bio: foundUser.bio,
-      name: foundUser.name,
+      ...resData,
       accessToken: accessToken,
     },
   });
@@ -118,16 +115,14 @@ async function profile(req: Request, res: Response) {
       id: id,
     },
   });
-  if (!foundUser) {
-    res.sendStatus(400);
-    return;
-  }
+  if (!foundUser) return res.sendStatus(400);
+
+  const resData = excludeFields(foundUser, ["refreshToken", "password"]);
+  console.log(resData);
+
   res.status(200).send({
     profile: {
-      username: foundUser.username,
-      name: foundUser.name,
-      email: foundUser.email,
-      bio: foundUser.bio,
+      ...resData,
     },
   });
 }
@@ -178,7 +173,7 @@ async function logOut(req: Request, res: Response) {
       },
     });
 
-    if (!foundUser) res.sendStatus(401);
+    if (!foundUser) res.sendStatus(404);
     res.clearCookie("refreshToken");
     res.sendStatus(200);
   } catch (e) {
@@ -196,7 +191,7 @@ async function changeEmail(req: Request, res: Response) {
     },
   });
 
-  if (!foundUser) return res.sendStatus(400);
+  if (!foundUser) return res.sendStatus(404);
 
   const isSamePassword = await bcrypt.compare(
     validateBody.data.password,
@@ -213,7 +208,7 @@ async function changeEmail(req: Request, res: Response) {
 
   if (isUsedEmail) return res.sendStatus(409);
 
-  await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: {
       id: id,
     },
@@ -222,7 +217,9 @@ async function changeEmail(req: Request, res: Response) {
     },
   });
 
-  res.sendStatus(200);
+  const resData = excludeFields(updatedUser, ["refreshToken", "password"]);
+
+  res.status(200).send(resData);
 }
 
 async function changePassword(req: Request, res: Response) {
@@ -246,7 +243,7 @@ async function changePassword(req: Request, res: Response) {
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(validateBody.data.newPassword, salt);
 
-  await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: {
       id: id,
     },
@@ -254,8 +251,8 @@ async function changePassword(req: Request, res: Response) {
       password: hashedPassword,
     },
   });
-
-  res.sendStatus(200);
+  const resData = excludeFields(updatedUser, ["refreshToken", "password"]);
+  res.status(200).send(resData);
 }
 
 async function changeProfile(req: Request, res: Response) {
@@ -263,15 +260,8 @@ async function changeProfile(req: Request, res: Response) {
   if (!validateBody.success) return res.sendStatus(400);
 
   const { id } = req as UserRequest;
-  const foundUser = await prisma.user.findFirst({
-    where: {
-      id: id,
-    },
-  });
 
-  if (!foundUser) return res.sendStatus(404);
-
-  await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     where: {
       id: id,
     },
@@ -280,7 +270,11 @@ async function changeProfile(req: Request, res: Response) {
     },
   });
 
-  res.sendStatus(200);
+  if (!updatedUser) return res.sendStatus(404);
+
+  const resData = excludeFields(updatedUser, ["refreshToken", "password"]);
+
+  res.status(200).send(resData);
 }
 
 export default {
