@@ -76,8 +76,20 @@ async function editArticle(req: Request, res: Response) {
   res.status(200).send(editedArticle);
 }
 
+async function deleteArticle(req: Request, res: Response) {
+  const { id } = req as ArticleRequest;
+  await prisma.article.delete({
+    where: {
+      slug: req.params.slug,
+      author_id: id,
+    },
+  });
+  res.sendStatus(204);
+}
+
 export default {
   createArticle,
   getArticle,
   editArticle,
+  deleteArticle,
 };

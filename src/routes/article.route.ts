@@ -8,5 +8,6 @@ router.post("/", validateAccessToken, articleContoller.createArticle);
 
 router.get("/:slug", articleContoller.getArticle);
 router.put("/:slug", validateAccessToken, articleContoller.editArticle);
+router.delete("/:slug", validateAccessToken, articleContoller.deleteArticle);
 
 export default router;
