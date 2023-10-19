@@ -122,6 +122,26 @@ async function deleteComment(req: Request, res: Response) {
   res.sendStatus(204);
 }
 
+async function getComments(req: Request, res: Response) {
+  const comments = await prisma.comment.findMany({
+    where: {
+      aritcleDetails: {
+        slug: req.params.slug,
+      },
+    },
+    include: {
+      commentAuthor: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+        },
+      },
+    },
+  });
+  res.status(200).send(comments);
+}
+
 export default {
   createArticle,
   getArticle,
@@ -129,4 +149,5 @@ export default {
   deleteArticle,
   addComment,
   deleteComment,
+  getComments,
 };

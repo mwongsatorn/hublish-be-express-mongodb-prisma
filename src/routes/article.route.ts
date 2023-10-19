@@ -10,6 +10,8 @@ router.get("/:slug", articleContoller.getArticle);
 router.put("/:slug", validateAccessToken, articleContoller.editArticle);
 router.delete("/:slug", validateAccessToken, articleContoller.deleteArticle);
 
+router.get("/:slug/comments", articleContoller.getComments);
+
 router.post(
   "/:slug/comments",
   validateAccessToken,
