@@ -10,4 +10,10 @@ router.get("/:slug", articleContoller.getArticle);
 router.put("/:slug", validateAccessToken, articleContoller.editArticle);
 router.delete("/:slug", validateAccessToken, articleContoller.deleteArticle);
 
+router.post(
+  "/:slug/comments",
+  validateAccessToken,
+  articleContoller.addComment
+);
+
 export default router;

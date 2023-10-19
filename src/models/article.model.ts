@@ -26,3 +26,10 @@ export const CreateArticleSchema = z.object({
 
 export type EditArticle = z.infer<typeof EditArticleSchema>;
 export const EditArticleSchema = CreateArticleSchema.partial();
+
+export type AddComment = z.infer<typeof AddCommentSchema>;
+export const AddCommentSchema = z.object({
+  body: z.string().max(500, {
+    message: "Your comment can not be more than 500 characters",
+  }),
+});

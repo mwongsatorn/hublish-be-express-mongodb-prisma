@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import {
+  AddCommentSchema,
   CreateArticleSchema,
   EditArticleSchema,
 } from "../models/article.model";
@@ -87,9 +88,34 @@ async function deleteArticle(req: Request, res: Response) {
   res.sendStatus(204);
 }
 
+async function addComment(req: Request, res: Response) {
+  const validateBody = AddCommentSchema.safeParse(req.body)
+  if(!validateBody.success) return res.sendStatus(400)
+
+  const { id } = req as ArticleRequest;
+  const addedComment = await prisma.comment.create({
+    data: {
+      body: validateBody.data.body,
+      commentAuthor: {
+        connect: {
+          id: id
+        }
+      },
+      aritcleDetails: {
+        connect: {
+          slug: req.params.slug
+        }
+      }
+      
+    }
+  })
+  res.status(201).send(addedComment)
+}
+
 export default {
   createArticle,
   getArticle,
   editArticle,
   deleteArticle,
+  addComment,
 };
