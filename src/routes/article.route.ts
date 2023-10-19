@@ -16,4 +16,10 @@ router.post(
   articleContoller.addComment
 );
 
+router.delete(
+  "/:slug/comments/:comment_id",
+  validateAccessToken,
+  articleContoller.deleteComment
+);
+
 export default router;

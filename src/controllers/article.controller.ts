@@ -89,8 +89,8 @@ async function deleteArticle(req: Request, res: Response) {
 }
 
 async function addComment(req: Request, res: Response) {
-  const validateBody = AddCommentSchema.safeParse(req.body)
-  if(!validateBody.success) return res.sendStatus(400)
+  const validateBody = AddCommentSchema.safeParse(req.body);
+  if (!validateBody.success) return res.sendStatus(400);
 
   const { id } = req as ArticleRequest;
   const addedComment = await prisma.comment.create({
@@ -98,18 +98,28 @@ async function addComment(req: Request, res: Response) {
       body: validateBody.data.body,
       commentAuthor: {
         connect: {
-          id: id
-        }
+          id: id,
+        },
       },
       aritcleDetails: {
         connect: {
-          slug: req.params.slug
-        }
-      }
-      
-    }
-  })
-  res.status(201).send(addedComment)
+          slug: req.params.slug,
+        },
+      },
+    },
+  });
+  res.status(201).send(addedComment);
+}
+
+async function deleteComment(req: Request, res: Response) {
+  const { id } = req as ArticleRequest;
+  await prisma.comment.delete({
+    where: {
+      id: req.params.comment_id,
+      commentAuthor_id: id,
+    },
+  });
+  res.sendStatus(204);
 }
 
 export default {
@@ -118,4 +128,5 @@ export default {
   editArticle,
   deleteArticle,
   addComment,
+  deleteComment,
 };
