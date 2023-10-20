@@ -15,17 +15,33 @@ interface UserRequest extends Request {
   id: string;
 }
 
-async function profile(req: Request, res: Response) {
+async function getCurrentUser(req: Request, res: Response) {
   const { id } = req as UserRequest;
   const foundUser = await prisma.user.findFirst({
     where: {
       id: id,
     },
   });
-  if (!foundUser) return res.sendStatus(400);
+  if (!foundUser) return res.sendStatus(404);
 
   const resData = excludeFields(foundUser, ["refreshToken", "password"]);
-  console.log(resData);
+
+  res.status(200).send({
+    user: {
+      ...resData,
+    },
+  });
+}
+
+async function getUserProfile(req: Request, res: Response) {
+  const foundUser = await prisma.user.findFirst({
+    where: {
+      username: req.params.username,
+    },
+  });
+  if (!foundUser) return res.sendStatus(404);
+
+  const resData = excludeFields(foundUser, ["refreshToken", "password"]);
 
   res.status(200).send({
     profile: {
@@ -131,7 +147,8 @@ async function changeProfile(req: Request, res: Response) {
 }
 
 export default {
-  profile,
+  getCurrentUser,
+  getUserProfile,
   changeEmail,
   changePassword,
   changeProfile,

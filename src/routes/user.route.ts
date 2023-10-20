@@ -4,7 +4,9 @@ import { validateAccessToken } from "../middlewares/validateAccessToken";
 
 const router = express.Router();
 
-router.get("/profile", validateAccessToken, userController.profile);
+router.get("/current", validateAccessToken, userController.getCurrentUser)
+
+router.get("/:username/profile", userController.getUserProfile);
 
 router.put("/settings/email", validateAccessToken, userController.changeEmail);
 router.put(
