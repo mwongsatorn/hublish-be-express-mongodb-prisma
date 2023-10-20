@@ -142,6 +142,50 @@ async function getComments(req: Request, res: Response) {
   res.status(200).send(comments);
 }
 
+async function favouriteArticle(req: Request, res: Response) {
+  const { id } = req as ArticleRequest;
+  const isFavourited = await prisma.favourite.findFirst({
+    where: {
+      user: {
+        id: id,
+      },
+      article: {
+        slug: req.params.slug,
+      },
+    },
+  });
+
+  if (isFavourited) return res.sendStatus(409);
+
+  const favourite = await prisma.favourite.create({
+    data: {
+      user: {
+        connect: {
+          id: id,
+        },
+      },
+      article: {
+        connect: {
+          slug: req.params.slug,
+        },
+      },
+    },
+  });
+
+  const article = await prisma.article.update({
+    where: {
+      slug: req.params.slug,
+    },
+    data: {
+      favouriteCount: {
+        increment: 1,
+      },
+    },
+  });
+
+  res.status(200).send(article);
+}
+
 export default {
   createArticle,
   getArticle,
@@ -150,4 +194,5 @@ export default {
   addComment,
   deleteComment,
   getComments,
+  favouriteArticle,
 };

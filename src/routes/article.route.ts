@@ -24,4 +24,10 @@ router.delete(
   articleContoller.deleteComment
 );
 
+router.post(
+  "/:slug/favourite",
+  validateAccessToken,
+  articleContoller.favouriteArticle
+);
+
 export default router;
