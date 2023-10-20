@@ -186,6 +186,42 @@ async function favouriteArticle(req: Request, res: Response) {
   res.status(200).send(article);
 }
 
+async function unfavouriteArticle(req: Request, res: Response) {
+  const { id } = req as ArticleRequest;
+  const isFavourited = await prisma.favourite.findFirst({
+    where: {
+      user_id: id,
+      article: {
+        slug: req.params.slug,
+      },
+    },
+  });
+
+  if (!isFavourited) return res.sendStatus(404);
+
+  const unfavourite = await prisma.favourite.delete({
+    where: {
+      user_id: id,
+      article: {
+        slug: req.params.slug,
+      },
+    },
+  });
+
+  const article = await prisma.article.update({
+    where: {
+      slug: req.params.slug,
+    },
+    data: {
+      favouriteCount: {
+        decrement: 1,
+      },
+    },
+  });
+
+  res.status(200).send(article);
+}
+
 export default {
   createArticle,
   getArticle,
@@ -195,4 +231,5 @@ export default {
   deleteComment,
   getComments,
   favouriteArticle,
+  unfavouriteArticle,
 };

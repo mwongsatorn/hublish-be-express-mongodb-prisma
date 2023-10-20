@@ -30,4 +30,10 @@ router.post(
   articleContoller.favouriteArticle
 );
 
+router.delete(
+  "/:slug/favourite",
+  validateAccessToken,
+  articleContoller.unfavouriteArticle
+);
+
 export default router;
