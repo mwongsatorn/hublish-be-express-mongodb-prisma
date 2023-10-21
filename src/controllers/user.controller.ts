@@ -264,6 +264,28 @@ async function getUserFollowers(req: Request, res: Response) {
   res.status(200).send(followerUsers);
 }
 
+async function getUserFollowings(req: Request, res: Response) {
+  const { user_id } = req.params;
+  const followingUsers = await prisma.follow.findMany({
+    where: {
+      follower_id: user_id,
+    },
+    include: {
+      following: {
+        select: {
+          username: true,
+          bio: true,
+          image: true,
+          name: true,
+          id: true,
+        },
+      },
+    },
+  });
+
+  res.status(200).send(followingUsers);
+}
+
 export default {
   getCurrentUser,
   getUserProfile,
@@ -273,4 +295,5 @@ export default {
   followUser,
   unfollowUser,
   getUserFollowers,
+  getUserFollowings,
 };
