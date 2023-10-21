@@ -4,7 +4,7 @@ import { validateAccessToken } from "../middlewares/validateAccessToken";
 
 const router = express.Router();
 
-router.get("/current", validateAccessToken, userController.getCurrentUser)
+router.get("/current", validateAccessToken, userController.getCurrentUser);
 
 router.get("/:username/profile", userController.getUserProfile);
 
@@ -20,5 +20,7 @@ router.put(
   validateAccessToken,
   userController.changeProfile
 );
+
+router.post("/:user_id/follow", validateAccessToken, userController.followUser);
 
 export default router;

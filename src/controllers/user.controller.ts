@@ -146,10 +146,59 @@ async function changeProfile(req: Request, res: Response) {
   res.status(200).send(resData);
 }
 
+async function followUser(req: Request, res: Response) {
+  const { id } = req as UserRequest;
+
+  if (req.params.user_id === id) return res.sendStatus(400);
+
+  const isFollowing = await prisma.follow.findFirst({
+    where: {
+      following_id: req.params.user_id,
+      follower_id: id,
+    },
+  });
+
+  if (isFollowing) return res.sendStatus(409);
+
+  await prisma.$transaction(async (tx) => {
+    const followRelation = await tx.follow.create({
+      data: {
+        following_id: req.params.user_id,
+        follower_id: id,
+      },
+    });
+
+    const followingUser = await tx.user.update({
+      where: {
+        id: req.params.user_id,
+      },
+      data: {
+        followerCount: {
+          increment: 1,
+        },
+      },
+    });
+    const followerUser = await tx.user.update({
+      where: {
+        id: id,
+      },
+      data: {
+        followingCount: {
+          increment: 1,
+        },
+      },
+    });
+
+    const resData = excludeFields(followingUser, ["password", "refreshToken"]);
+    return res.status(201).send({ user: { ...resData } });
+  });
+}
+
 export default {
   getCurrentUser,
   getUserProfile,
   changeEmail,
   changePassword,
   changeProfile,
+  followUser,
 };
