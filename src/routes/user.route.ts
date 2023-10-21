@@ -23,4 +23,10 @@ router.put(
 
 router.post("/:user_id/follow", validateAccessToken, userController.followUser);
 
+router.delete(
+  "/:user_id/follow",
+  validateAccessToken,
+  userController.unfollowUser
+);
+
 export default router;
