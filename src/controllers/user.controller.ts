@@ -36,7 +36,7 @@ async function getCurrentUser(req: Request, res: Response) {
 async function getUserProfile(req: Request, res: Response) {
   const foundUser = await prisma.user.findFirst({
     where: {
-      username: req.params.username,
+      id: req.params.user_id,
     },
   });
   if (!foundUser) return res.sendStatus(404);
