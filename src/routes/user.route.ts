@@ -29,4 +29,6 @@ router.delete(
   userController.unfollowUser
 );
 
+router.get("/:user_id/followers", userController.getUserFollowers);
+
 export default router;
