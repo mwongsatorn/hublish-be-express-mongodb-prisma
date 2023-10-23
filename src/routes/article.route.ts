@@ -12,6 +12,8 @@ router.get(
   articleContoller.getFavouriteArticles
 );
 
+router.get("/feed", validateAccessToken, articleContoller.getFeedArticles);
+
 router.get("/:slug", articleContoller.getArticle);
 router.put("/:slug", validateAccessToken, articleContoller.editArticle);
 router.delete("/:slug", validateAccessToken, articleContoller.deleteArticle);

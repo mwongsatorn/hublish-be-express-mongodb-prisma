@@ -246,6 +246,36 @@ async function getFavouriteArticles(req: Request, res: Response) {
   res.status(200).send(favouriteArticles);
 }
 
+async function getFeedArticles(req: Request, res: Response) {
+  const { id } = req as ArticleRequest;
+  const followRelations = await prisma.follow.findMany({
+    where: {
+      follower_id: id,
+    },
+  });
+  const followingIds = followRelations.map((obj) => obj.following_id);
+  const feedArticles = await prisma.article.findMany({
+    where: {
+      author_id: {
+        in: followingIds,
+      },
+    },
+    include: {
+      author: {
+        select: {
+          username: true,
+          bio: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  console.log(feedArticles);
+
+  res.status(200).send(feedArticles);
+}
+
 export default {
   createArticle,
   getArticle,
@@ -257,4 +287,5 @@ export default {
   favouriteArticle,
   unfavouriteArticle,
   getFavouriteArticles,
+  getFeedArticles,
 };
