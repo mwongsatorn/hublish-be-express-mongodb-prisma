@@ -40,6 +40,17 @@ async function getArticle(req: Request, res: Response) {
     where: {
       slug: req.params.slug,
     },
+    include: {
+      author: {
+        select: {
+          id: true,
+          username: true,
+          image: true,
+          bio: true,
+          name: true,
+        },
+      },
+    },
   });
 
   if (!foundArticle) return res.sendStatus(404);
