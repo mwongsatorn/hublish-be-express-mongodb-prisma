@@ -238,26 +238,32 @@ async function unfollowUser(req: Request, res: Response) {
     });
 
     const resData = excludeFields(followingUser, ["password", "refreshToken"]);
-    return res.status(201).send({ user: { ...resData } });
+    return res.status(200).send({ user: { ...resData } });
   });
 }
 
 async function getUserFollowers(req: Request, res: Response) {
   const { user_id } = req.params;
-  const followerUsers = await prisma.follow.findMany({
+  const followRelations = await prisma.follow.findMany({
     where: {
       following_id: user_id,
     },
-    include: {
-      follower: {
-        select: {
-          username: true,
-          bio: true,
-          image: true,
-          name: true,
-          id: true,
-        },
+  });
+
+  const followerIds = followRelations.map((obj) => obj.follower_id);
+
+  const followerUsers = await prisma.user.findMany({
+    where: {
+      id: {
+        in: followerIds,
       },
+    },
+    select: {
+      id: true,
+      username: true,
+      bio: true,
+      name: true,
+      image: true,
     },
   });
 
@@ -266,20 +272,26 @@ async function getUserFollowers(req: Request, res: Response) {
 
 async function getUserFollowings(req: Request, res: Response) {
   const { user_id } = req.params;
-  const followingUsers = await prisma.follow.findMany({
+  const followRelations = await prisma.follow.findMany({
     where: {
       follower_id: user_id,
     },
-    include: {
-      following: {
-        select: {
-          username: true,
-          bio: true,
-          image: true,
-          name: true,
-          id: true,
-        },
+  });
+
+  const followingIds = followRelations.map((obj) => obj.following_id);
+
+  const followingUsers = await prisma.user.findMany({
+    where: {
+      id: {
+        in: followingIds,
       },
+    },
+    select: {
+      id: true,
+      username: true,
+      bio: true,
+      name: true,
+      image: true,
     },
   });
 
