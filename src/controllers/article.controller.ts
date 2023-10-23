@@ -157,33 +157,35 @@ async function favouriteArticle(req: Request, res: Response) {
 
   if (isFavourited) return res.sendStatus(409);
 
-  const favourite = await prisma.favourite.create({
-    data: {
-      user: {
-        connect: {
-          id: id,
+  await prisma.$transaction(async (tx) => {
+    const favourite = await tx.favourite.create({
+      data: {
+        user: {
+          connect: {
+            id: id,
+          },
+        },
+        article: {
+          connect: {
+            slug: req.params.slug,
+          },
         },
       },
-      article: {
-        connect: {
-          slug: req.params.slug,
+    });
+
+    const article = await tx.article.update({
+      where: {
+        slug: req.params.slug,
+      },
+      data: {
+        favouriteCount: {
+          increment: 1,
         },
       },
-    },
-  });
+    });
 
-  const article = await prisma.article.update({
-    where: {
-      slug: req.params.slug,
-    },
-    data: {
-      favouriteCount: {
-        increment: 1,
-      },
-    },
+    res.status(200).send(article);
   });
-
-  res.status(200).send(article);
 }
 
 async function unfavouriteArticle(req: Request, res: Response) {
@@ -199,27 +201,29 @@ async function unfavouriteArticle(req: Request, res: Response) {
 
   if (!isFavourited) return res.sendStatus(404);
 
-  const unfavourite = await prisma.favourite.delete({
-    where: {
-      user_id: id,
-      article: {
+  await prisma.$transaction(async (tx) => {
+    const unfavourite = await tx.favourite.delete({
+      where: {
+        user_id: id,
+        article: {
+          slug: req.params.slug,
+        },
+      },
+    });
+
+    const article = await tx.article.update({
+      where: {
         slug: req.params.slug,
       },
-    },
-  });
-
-  const article = await prisma.article.update({
-    where: {
-      slug: req.params.slug,
-    },
-    data: {
-      favouriteCount: {
-        decrement: 1,
+      data: {
+        favouriteCount: {
+          decrement: 1,
+        },
       },
-    },
-  });
+    });
 
-  res.status(200).send(article);
+    res.status(200).send(article);
+  });
 }
 
 async function getFavouriteArticles(req: Request, res: Response) {
