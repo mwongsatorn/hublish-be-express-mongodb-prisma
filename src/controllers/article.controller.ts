@@ -7,7 +7,6 @@ import {
   EditArticleSchema,
 } from "../models/article.model";
 import { generateSlug } from "../helpers/generateSlug";
-import { z } from "zod";
 
 const prisma = new PrismaClient();
 
@@ -16,15 +15,15 @@ interface ArticleRequest extends Request {
 }
 
 async function createArticle(req: Request, res: Response) {
-  const article = CreateArticleSchema.safeParse(req.body);
-  if (!article.success) {
+  const validateBody = CreateArticleSchema.safeParse(req.body);
+  if (!validateBody.success) {
     return res.sendStatus(400);
   }
   const { id } = req as ArticleRequest;
-  const slug = generateSlug(article.data.title);
+  const slug = generateSlug(validateBody.data.title);
   const createdArticle = await prisma.article.create({
     data: {
-      ...article.data,
+      ...validateBody.data,
       slug: slug,
       author: {
         connect: {
@@ -37,12 +36,9 @@ async function createArticle(req: Request, res: Response) {
 }
 
 async function getArticle(req: Request, res: Response) {
-  const validateParams = z.object({ slug: z.string() }).safeParse(req.params);
-  if (!validateParams.success) return res.sendStatus(400);
-
   const foundArticle = await prisma.article.findFirst({
     where: {
-      slug: validateParams.data.slug,
+      slug: req.params.slug,
     },
   });
 
