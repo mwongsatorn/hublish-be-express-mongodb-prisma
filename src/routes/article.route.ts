@@ -6,6 +6,12 @@ const router = express.Router();
 
 router.post("/", validateAccessToken, articleContoller.createArticle);
 
+router.get(
+  "/favourite",
+  validateAccessToken,
+  articleContoller.getFavouriteArticles
+);
+
 router.get("/:slug", articleContoller.getArticle);
 router.put("/:slug", validateAccessToken, articleContoller.editArticle);
 router.delete("/:slug", validateAccessToken, articleContoller.deleteArticle);

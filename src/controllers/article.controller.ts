@@ -222,6 +222,30 @@ async function unfavouriteArticle(req: Request, res: Response) {
   res.status(200).send(article);
 }
 
+async function getFavouriteArticles(req: Request, res: Response) {
+  const { id } = req as ArticleRequest;
+  const favouriteArticles = await prisma.favourite.findMany({
+    where: {
+      user_id: id,
+    },
+    select: {
+      article: {
+        include: {
+          author: {
+            select: {
+              username: true,
+              name: true,
+              bio: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  res.status(200).send(favouriteArticles);
+}
+
 export default {
   createArticle,
   getArticle,
@@ -232,4 +256,5 @@ export default {
   getComments,
   favouriteArticle,
   unfavouriteArticle,
+  getFavouriteArticles,
 };
