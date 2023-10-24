@@ -6,13 +6,9 @@ const router = express.Router();
 
 router.post("/", validateAccessToken, articleContoller.createArticle);
 
-router.get(
-  "/favourite",
-  validateAccessToken,
-  articleContoller.getFavouriteArticles
-);
-
 router.get("/feed", validateAccessToken, articleContoller.getFeedArticles);
+
+router.get("/:user_id/favourite", articleContoller.getFavouriteArticles);
 
 router.get("/:user_id/created", articleContoller.getUserCreatedArticles);
 

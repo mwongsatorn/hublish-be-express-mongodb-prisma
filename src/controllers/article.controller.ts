@@ -234,10 +234,10 @@ async function unfavouriteArticle(req: Request, res: Response) {
 }
 
 async function getFavouriteArticles(req: Request, res: Response) {
-  const { id } = req as ArticleRequest;
+  const { user_id } = req.params;
   const favouriteRelations = await prisma.favourite.findMany({
     where: {
-      user_id: id,
+      user_id: user_id,
     },
   });
 
@@ -246,6 +246,16 @@ async function getFavouriteArticles(req: Request, res: Response) {
     where: {
       id: {
         in: articleIds,
+      },
+    },
+    include: {
+      author: {
+        select: {
+          username: true,
+          bio: true,
+          name: true,
+          image: true,
+        },
       },
     },
   });
