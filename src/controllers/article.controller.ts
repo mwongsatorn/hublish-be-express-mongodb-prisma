@@ -272,12 +272,12 @@ async function getFeedArticles(req: Request, res: Response) {
           username: true,
           bio: true,
           name: true,
+          image: true,
         },
       },
     },
   });
 
-  console.log(feedArticles);
 
   res.status(200).send(feedArticles);
 }
