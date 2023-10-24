@@ -36,7 +36,7 @@ async function getCurrentUser(req: Request, res: Response) {
 async function getUserProfile(req: Request, res: Response) {
   const foundUser = await prisma.user.findFirst({
     where: {
-      id: req.params.user_id,
+      username: req.params.username,
     },
   });
   if (!foundUser) return res.sendStatus(404);
@@ -190,7 +190,7 @@ async function followUser(req: Request, res: Response) {
     });
 
     const resData = excludeFields(followingUser, ["password", "refreshToken"]);
-    return res.status(201).send({ user: { ...resData } });
+    return res.status(201).send({ profile: { ...resData } });
   });
 }
 
@@ -238,7 +238,7 @@ async function unfollowUser(req: Request, res: Response) {
     });
 
     const resData = excludeFields(followingUser, ["password", "refreshToken"]);
-    return res.status(200).send({ user: { ...resData } });
+    return res.status(200).send({ profile: { ...resData } });
   });
 }
 

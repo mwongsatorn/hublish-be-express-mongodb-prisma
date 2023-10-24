@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get("/current", validateAccessToken, userController.getCurrentUser);
 
-router.get("/:user_id/profile", userController.getUserProfile);
+router.get("/:username/profile", userController.getUserProfile);
 
 router.put("/settings/email", validateAccessToken, userController.changeEmail);
 router.put(
