@@ -278,8 +278,28 @@ async function getFeedArticles(req: Request, res: Response) {
     },
   });
 
-
   res.status(200).send(feedArticles);
+}
+
+async function getUserCreatedArticles(req: Request, res: Response) {
+  const { user_id } = req.params;
+  const createdArticles = await prisma.article.findMany({
+    where: {
+      author_id: user_id,
+    },
+    include: {
+      author: {
+        select: {
+          username: true,
+          bio: true,
+          name: true,
+          image: true,
+        },
+      },
+    },
+  });
+
+  res.status(200).send(createdArticles);
 }
 
 export default {
@@ -294,4 +314,5 @@ export default {
   unfavouriteArticle,
   getFavouriteArticles,
   getFeedArticles,
+  getUserCreatedArticles,
 };

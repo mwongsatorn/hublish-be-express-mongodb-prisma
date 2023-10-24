@@ -14,6 +14,8 @@ router.get(
 
 router.get("/feed", validateAccessToken, articleContoller.getFeedArticles);
 
+router.get("/:user_id/created", articleContoller.getUserCreatedArticles);
+
 router.get("/:slug", articleContoller.getArticle);
 router.put("/:slug", validateAccessToken, articleContoller.editArticle);
 router.delete("/:slug", validateAccessToken, articleContoller.deleteArticle);
