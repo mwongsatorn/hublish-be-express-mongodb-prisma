@@ -90,10 +90,8 @@ async function logIn(req: Request, res: Response) {
 
   const resData = excludeFields(foundUser, ["refreshToken", "password"]);
   res.status(200).send({
-    user: {
-      ...resData,
-      accessToken: accessToken,
-    },
+    ...resData,
+    accessToken: accessToken,
   });
 }
 

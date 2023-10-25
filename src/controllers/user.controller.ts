@@ -26,11 +26,7 @@ async function getCurrentUser(req: Request, res: Response) {
 
   const resData = excludeFields(foundUser, ["refreshToken", "password"]);
 
-  res.status(200).send({
-    user: {
-      ...resData,
-    },
-  });
+  res.status(200).send(resData);
 }
 
 async function getUserProfile(req: Request, res: Response) {
@@ -43,11 +39,7 @@ async function getUserProfile(req: Request, res: Response) {
 
   const resData = excludeFields(foundUser, ["refreshToken", "password"]);
 
-  res.status(200).send({
-    profile: {
-      ...resData,
-    },
-  });
+  res.status(200).send(resData);
 }
 
 async function changeEmail(req: Request, res: Response) {
@@ -190,7 +182,7 @@ async function followUser(req: Request, res: Response) {
     });
 
     const resData = excludeFields(followingUser, ["password", "refreshToken"]);
-    return res.status(201).send({ profile: { ...resData } });
+    return res.status(201).send(resData);
   });
 }
 
@@ -211,8 +203,7 @@ async function unfollowUser(req: Request, res: Response) {
   await prisma.$transaction(async (tx) => {
     const followRelation = await tx.follow.delete({
       where: {
-        following_id: req.params.user_id,
-        follower_id: id,
+        id: isFollowing.id,
       },
     });
 
@@ -238,7 +229,7 @@ async function unfollowUser(req: Request, res: Response) {
     });
 
     const resData = excludeFields(followingUser, ["password", "refreshToken"]);
-    return res.status(200).send({ profile: { ...resData } });
+    return res.status(200).send(resData);
   });
 }
 

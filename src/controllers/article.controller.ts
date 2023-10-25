@@ -21,18 +21,15 @@ async function createArticle(req: Request, res: Response) {
   }
   const { id } = req as ArticleRequest;
   const slug = generateSlug(validateBody.data.title);
+  console.log(validateBody.data, slug);
   const createdArticle = await prisma.article.create({
     data: {
       ...validateBody.data,
       slug: slug,
-      author: {
-        connect: {
-          id: id,
-        },
-      },
+      author_id: id,
     },
   });
-  res.status(200).send(createdArticle);
+  res.status(201).send(createdArticle);
 }
 
 async function getArticle(req: Request, res: Response) {
@@ -211,10 +208,7 @@ async function unfavouriteArticle(req: Request, res: Response) {
   await prisma.$transaction(async (tx) => {
     const unfavourite = await tx.favourite.delete({
       where: {
-        user_id: id,
-        article: {
-          slug: req.params.slug,
-        },
+        id: isFavourited.id,
       },
     });
 
