@@ -19,4 +19,5 @@ export const ChangeProfileSchema = z.object({
   bio: z.string().max(160, {
     message: "Your bio can not be more than 160 characters.",
   }),
+  image: z.string(),
 });
