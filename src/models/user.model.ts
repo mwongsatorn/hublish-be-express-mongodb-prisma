@@ -13,11 +13,17 @@ export const ChangePasswordSchema = z.object({
 });
 
 export const ChangeProfileSchema = z.object({
-  name: z.string().max(70, {
-    message: "Your name can not be more than 70 characters.",
-  }),
-  bio: z.string().max(160, {
-    message: "Your bio can not be more than 160 characters.",
-  }),
-  image: z.string(),
+  name: z
+    .string()
+    .max(70, {
+      message: "Your name can not be more than 70 characters.",
+    })
+    .optional(),
+  bio: z
+    .string()
+    .max(160, {
+      message: "Your bio can not be more than 160 characters.",
+    })
+    .optional(),
+  image: z.string().optional(),
 });
