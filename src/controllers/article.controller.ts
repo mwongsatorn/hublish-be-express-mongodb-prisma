@@ -97,6 +97,7 @@ async function addComment(req: Request, res: Response) {
   if (!validateBody.success) return res.sendStatus(400);
 
   const { id } = req as ArticleRequest;
+
   const addedComment = await prisma.comment.create({
     data: {
       body: validateBody.data.body,
@@ -108,6 +109,16 @@ async function addComment(req: Request, res: Response) {
       aritcleDetails: {
         connect: {
           slug: req.params.slug,
+        },
+      },
+    },
+    include: {
+      commentAuthor: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          image: true,
         },
       },
     },
@@ -139,6 +150,7 @@ async function getComments(req: Request, res: Response) {
           id: true,
           username: true,
           name: true,
+          image: true,
         },
       },
     },
