@@ -9,11 +9,7 @@ interface UserPayload extends jwt.JwtPayload {
   id: string;
 }
 
-export function validateAccessToken(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+export function requireLogin(req: Request, res: Response, next: NextFunction) {
   try {
     if (!req.headers["authorization"]) {
       res.status(401).send({ error: "No access token" });

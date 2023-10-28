@@ -1,33 +1,21 @@
 import express from "express";
 import userController from "../controllers/user.controller";
-import { validateAccessToken } from "../middlewares/validateAccessToken";
+import { requireLogin } from "../middlewares/requireLogin";
 
 const router = express.Router();
 
-router.get("/current", validateAccessToken, userController.getCurrentUser);
+router.get("/current", requireLogin, userController.getCurrentUser);
 
 router.get("/:username/profile", userController.getUserProfile);
 
-router.put("/settings/email", validateAccessToken, userController.changeEmail);
-router.put(
-  "/settings/password",
-  validateAccessToken,
-  userController.changePassword
-);
+router.put("/settings/email", requireLogin, userController.changeEmail);
+router.put("/settings/password", requireLogin, userController.changePassword);
 
-router.put(
-  "/settings/profile",
-  validateAccessToken,
-  userController.changeProfile
-);
+router.put("/settings/profile", requireLogin, userController.changeProfile);
 
-router.post("/:user_id/follow", validateAccessToken, userController.followUser);
+router.post("/:user_id/follow", requireLogin, userController.followUser);
 
-router.delete(
-  "/:user_id/follow",
-  validateAccessToken,
-  userController.unfollowUser
-);
+router.delete("/:user_id/follow", requireLogin, userController.unfollowUser);
 
 router.get("/:user_id/followers", userController.getUserFollowers);
 

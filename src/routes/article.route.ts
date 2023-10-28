@@ -1,44 +1,40 @@
 import express from "express";
 import articleContoller from "../controllers/article.controller";
-import { validateAccessToken } from "../middlewares/validateAccessToken";
+import { requireLogin } from "../middlewares/requireLogin";
 
 const router = express.Router();
 
-router.post("/", validateAccessToken, articleContoller.createArticle);
+router.post("/", requireLogin, articleContoller.createArticle);
 
-router.get("/feed", validateAccessToken, articleContoller.getFeedArticles);
+router.get("/feed", requireLogin, articleContoller.getFeedArticles);
 
 router.get("/:user_id/favourite", articleContoller.getFavouriteArticles);
 
 router.get("/:user_id/created", articleContoller.getUserCreatedArticles);
 
 router.get("/:slug", articleContoller.getArticle);
-router.put("/:slug", validateAccessToken, articleContoller.editArticle);
-router.delete("/:slug", validateAccessToken, articleContoller.deleteArticle);
+router.put("/:slug", requireLogin, articleContoller.editArticle);
+router.delete("/:slug", requireLogin, articleContoller.deleteArticle);
 
 router.get("/:slug/comments", articleContoller.getComments);
 
-router.post(
-  "/:slug/comments",
-  validateAccessToken,
-  articleContoller.addComment
-);
+router.post("/:slug/comments", requireLogin, articleContoller.addComment);
 
 router.delete(
   "/:slug/comments/:comment_id",
-  validateAccessToken,
+  requireLogin,
   articleContoller.deleteComment
 );
 
 router.post(
   "/:slug/favourite",
-  validateAccessToken,
+  requireLogin,
   articleContoller.favouriteArticle
 );
 
 router.delete(
   "/:slug/favourite",
-  validateAccessToken,
+  requireLogin,
   articleContoller.unfavouriteArticle
 );
 
