@@ -24,6 +24,9 @@ export function requireLogin(req: Request, res: Response, next: NextFunction) {
     (req as UserRequest).id = decoded.id;
     next();
   } catch (e) {
-    res.status(401).send({ error: "Token expired" });
+    if ((e as Error).name === "JsonWebTokenError")
+      res.status(401).send({ error: "Invalid token" });
+    if ((e as Error).name === "TokenExpiredError")
+      res.status(401).send({ error: "Token expired" });
   }
 }
