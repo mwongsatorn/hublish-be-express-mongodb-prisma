@@ -334,7 +334,7 @@ async function getFavouriteArticles(req: Request, res: Response) {
         updatedAt: {
           $toString: "$updatedAt",
         },
-        liked: {
+        favourited: {
           $cond: {
             if: {
               $in: ["$_id", "$loggedInUserFavouriteRelations.article_id"],
@@ -371,28 +371,129 @@ async function getFavouriteArticles(req: Request, res: Response) {
 
 async function getFeedArticles(req: Request, res: Response) {
   const { id } = req as ArticleRequest;
-  const followRelations = await prisma.follow.findMany({
-    where: {
-      follower_id: id,
+
+  const followingRelations = {
+    $lookup: {
+      from: "Follow",
+      pipeline: [
+        {
+          $match: {
+            follower_id: {
+              $oid: id,
+            },
+          },
+        },
+      ],
+      as: "followingRelations",
     },
-  });
-  const followingIds = followRelations.map((obj) => obj.following_id);
-  const feedArticles = await prisma.article.findMany({
-    where: {
-      author_id: {
-        in: followingIds,
-      },
-    },
-    include: {
-      author: {
-        select: {
-          username: true,
-          bio: true,
-          name: true,
-          image: true,
+  };
+
+  const articlesList = [
+    {
+      $match: {
+        $expr: {
+          $in: ["$author_id", "$followingRelations.following_id"],
         },
       },
     },
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+  ];
+
+  const loggedInUserFavouriteRelations = {
+    $lookup: {
+      from: "Favourite",
+      let: {
+        article_id: "$article_id",
+      },
+      pipeline: [
+        {
+          $match: {
+            user_id: {
+              $oid: id,
+            },
+            $expr: {
+              $in: ["$article_id", "$$article_id"],
+            },
+          },
+        },
+        { $unset: ["_id", "user_id"] },
+      ],
+      as: "loggedInUserFavouriteRelations",
+    },
+  };
+
+  const author = {
+    $lookup: {
+      from: "User",
+      let: { author_id: "$author_id" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $eq: ["$_id", "$$author_id"],
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            username: 1,
+            name: 1,
+            bio: 1,
+            image: 1,
+          },
+        },
+      ],
+      as: "author",
+    },
+  };
+
+  const specifyFields = [
+    {
+      $addFields: {
+        id: {
+          $toString: "$_id",
+        },
+        author_id: {
+          $toString: "$author_id",
+        },
+        createdAt: {
+          $toString: "$createdAt",
+        },
+        updatedAt: {
+          $toString: "$updatedAt",
+        },
+        favourited: {
+          $cond: {
+            if: {
+              $in: ["$_id", "$loggedInUserFavouriteRelations.article_id"],
+            },
+            then: true,
+            else: false,
+          },
+        },
+        author: {
+          $arrayElemAt: ["$author", 0],
+        },
+      },
+    },
+    {
+      $unset: ["_id", "loggedInUserFavouriteRelations", "followingRelations"],
+    },
+  ];
+
+  const feedArticles = await prisma.article.aggregateRaw({
+    pipeline: [
+      followingRelations,
+      ...articlesList,
+      loggedInUserFavouriteRelations,
+      author,
+      ...specifyFields,
+    ],
   });
 
   res.status(200).send(feedArticles);
