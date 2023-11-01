@@ -416,7 +416,7 @@ async function getFeedArticles(req: Request, res: Response) {
               $oid: id,
             },
             $expr: {
-              $in: ["$article_id", "$$article_id"],
+              $eq: ["$article_id", "$$article_id"],
             },
           },
         },
@@ -501,20 +501,112 @@ async function getFeedArticles(req: Request, res: Response) {
 
 async function getUserCreatedArticles(req: Request, res: Response) {
   const { user_id } = req.params;
-  const createdArticles = await prisma.article.findMany({
-    where: {
-      author_id: user_id,
-    },
-    include: {
-      author: {
-        select: {
-          username: true,
-          bio: true,
-          name: true,
-          image: true,
+  const { id } = req as ArticleRequest;
+
+  const articleList = [
+    {
+      $match: {
+        author_id: {
+          $oid: user_id,
         },
       },
     },
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+  ];
+  const author = {
+    $lookup: {
+      from: "User",
+      let: { author_id: "$author_id" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $eq: ["$_id", "$$author_id"],
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            username: 1,
+            name: 1,
+            bio: 1,
+            image: 1,
+          },
+        },
+      ],
+      as: "author",
+    },
+  };
+
+  const loggedInUserFavouriteRelations = {
+    $lookup: {
+      from: "Favourite",
+      let: {
+        article_id: "$article_id",
+      },
+      pipeline: [
+        {
+          $match: {
+            user_id: {
+              $oid: id,
+            },
+            $expr: {
+              $eq: ["$article_id", "$$article_id"],
+            },
+          },
+        },
+        { $unset: ["_id", "user_id"] },
+      ],
+      as: "loggedInUserFavouriteRelations",
+    },
+  };
+
+  const specifyFields = [
+    {
+      $addFields: {
+        id: {
+          $toString: "$_id",
+        },
+        author_id: {
+          $toString: "$author_id",
+        },
+        createdAt: {
+          $toString: "$createdAt",
+        },
+        updatedAt: {
+          $toString: "$updatedAt",
+        },
+        favourited: {
+          $cond: {
+            if: {
+              $in: ["$_id", "$loggedInUserFavouriteRelations.article_id"],
+            },
+            then: true,
+            else: false,
+          },
+        },
+        author: {
+          $arrayElemAt: ["$author", 0],
+        },
+      },
+    },
+    {
+      $unset: ["_id", "loggedInUserFavouriteRelations", "followingRelations"],
+    },
+  ];
+
+  const createdArticles = await prisma.article.aggregateRaw({
+    pipeline: [
+      ...articleList,
+      author,
+      loggedInUserFavouriteRelations,
+      ...specifyFields,
+    ],
   });
 
   res.status(200).send(createdArticles);
