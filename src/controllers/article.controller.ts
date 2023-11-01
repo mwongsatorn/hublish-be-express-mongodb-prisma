@@ -241,7 +241,7 @@ async function unfavouriteArticle(req: Request, res: Response) {
 
 async function getFavouriteArticles(req: Request, res: Response) {
   const { user_id } = req.params;
-  const { id } = req as ArticleRequest;
+  const { id: loggedInUserId } = req as ArticleRequest;
   const userFavouriteRelations = {
     $lookup: {
       from: "Favourite",
@@ -276,20 +276,19 @@ async function getFavouriteArticles(req: Request, res: Response) {
     $lookup: {
       from: "Favourite",
       let: {
-        article_id: "$userFavouriteRelations.article_id",
+        article_id: "$_id",
       },
       pipeline: [
         {
           $match: {
             user_id: {
-              $oid: id,
+              $oid: loggedInUserId,
             },
             $expr: {
-              $in: ["$article_id", "$$article_id"],
+              $eq: ["$article_id", "$$article_id"],
             },
           },
         },
-        { $unset: ["_id", "user_id"] },
       ],
       as: "loggedInUserFavouriteRelations",
     },
@@ -370,7 +369,7 @@ async function getFavouriteArticles(req: Request, res: Response) {
 }
 
 async function getFeedArticles(req: Request, res: Response) {
-  const { id } = req as ArticleRequest;
+  const { id: loggedInUserId } = req as ArticleRequest;
 
   const followingRelations = {
     $lookup: {
@@ -379,7 +378,7 @@ async function getFeedArticles(req: Request, res: Response) {
         {
           $match: {
             follower_id: {
-              $oid: id,
+              $oid: loggedInUserId,
             },
           },
         },
@@ -407,20 +406,19 @@ async function getFeedArticles(req: Request, res: Response) {
     $lookup: {
       from: "Favourite",
       let: {
-        article_id: "$article_id",
+        article_id: "$_id",
       },
       pipeline: [
         {
           $match: {
             user_id: {
-              $oid: id,
+              $oid: loggedInUserId,
             },
             $expr: {
               $eq: ["$article_id", "$$article_id"],
             },
           },
         },
-        { $unset: ["_id", "user_id"] },
       ],
       as: "loggedInUserFavouriteRelations",
     },
@@ -501,7 +499,7 @@ async function getFeedArticles(req: Request, res: Response) {
 
 async function getUserCreatedArticles(req: Request, res: Response) {
   const { user_id } = req.params;
-  const { id } = req as ArticleRequest;
+  const { id: loggedInUserId } = req as ArticleRequest;
 
   const articleList = [
     {
@@ -517,6 +515,7 @@ async function getUserCreatedArticles(req: Request, res: Response) {
       },
     },
   ];
+
   const author = {
     $lookup: {
       from: "User",
@@ -547,20 +546,19 @@ async function getUserCreatedArticles(req: Request, res: Response) {
     $lookup: {
       from: "Favourite",
       let: {
-        article_id: "$article_id",
+        article_id: "$_id",
       },
       pipeline: [
         {
           $match: {
             user_id: {
-              $oid: id,
+              $oid: loggedInUserId,
             },
             $expr: {
               $eq: ["$article_id", "$$article_id"],
             },
           },
         },
-        { $unset: ["_id", "user_id"] },
       ],
       as: "loggedInUserFavouriteRelations",
     },
