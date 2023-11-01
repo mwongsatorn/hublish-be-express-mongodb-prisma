@@ -30,6 +30,7 @@ async function getCurrentUser(req: Request, res: Response) {
 }
 
 async function getUserProfile(req: Request, res: Response) {
+  const { id } = req as UserRequest;
   const foundUser = await prisma.user.findFirst({
     where: {
       username: req.params.username,
@@ -37,9 +38,18 @@ async function getUserProfile(req: Request, res: Response) {
   });
   if (!foundUser) return res.sendStatus(404);
 
+  const followRelation = await prisma.follow.findFirst({
+    where: {
+      follower_id: id,
+      following_id: foundUser.id,
+    },
+  });
+
   const resData = excludeFields(foundUser, ["refreshToken", "password"]);
 
-  res.status(200).send(resData);
+  const followed = !id ? false : followRelation ? true : false;
+
+  res.status(200).send({ ...resData, followed: followed });
 }
 
 async function changeEmail(req: Request, res: Response) {
