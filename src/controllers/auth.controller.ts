@@ -38,32 +38,33 @@ async function signUp(req: Request, res: Response) {
 
 async function logIn(req: Request, res: Response) {
   const user = LogInSchema.safeParse(req.body);
-  if (!user.success) {
-    res.sendStatus(400);
-    return;
-  }
+  if (!user.success)
+    return res.status(400).send({ error: "Invalid login input" });
   const foundUser = await prisma.user.findFirst({
     where: {
       username: user.data.username,
     },
   });
 
-  if (!foundUser) {
-    res.sendStatus(401);
-    return;
-  }
+  if (!foundUser)
+    return res
+      .status(401)
+      .send({ error: "Username or password is incorrect." });
 
   const isSamePassword = await bcrypt.compare(
     user.data.password,
     foundUser.password
   );
 
-  if (!isSamePassword) return res.sendStatus(401);
+  if (!isSamePassword)
+    return res
+      .status(401)
+      .send({ error: "Username or password is incorrect." });
 
   const accessToken = jwt.sign(
     { id: foundUser.id },
     process.env.ACCESS_TOKEN_KEY!,
-    { expiresIn: "1m" }
+    { expiresIn: "15m" }
   );
 
   const refreshToken = jwt.sign(
@@ -103,7 +104,8 @@ function refreshAccessToken(req: Request, res: Response) {
   try {
     const validateCookies = CookiesSchema.safeParse(req.cookies);
 
-    if (!validateCookies.success) return res.sendStatus(401);
+    if (!validateCookies.success)
+      return res.status(401).send({ error: "Refresh token is required." });
 
     const { refreshToken } = validateCookies.data;
     const decoded = jwt.verify(
@@ -112,11 +114,12 @@ function refreshAccessToken(req: Request, res: Response) {
     ) as UserPayload;
     const accessToken = jwt.sign(
       { id: decoded.id },
-      process.env.ACCESS_TOKEN_KEY!
+      process.env.ACCESS_TOKEN_KEY!,
+      { expiresIn: "15m" }
     );
     res.status(200).send({ accessToken: accessToken });
   } catch (e) {
-    res.sendStatus(403);
+    res.status(401).send({ error: "Refresh token expired." });
   }
 }
 
@@ -124,7 +127,8 @@ async function logOut(req: Request, res: Response) {
   try {
     const validateCookies = CookiesSchema.safeParse(req.cookies);
 
-    if (!validateCookies.success) return res.sendStatus(401);
+    if (!validateCookies.success)
+      return res.status(401).send({ error: "Refresh token is required" });
 
     const { refreshToken } = validateCookies.data;
     const decoded = jwt.verify(
@@ -143,7 +147,7 @@ async function logOut(req: Request, res: Response) {
 
     if (!foundUser) res.sendStatus(404);
     res.clearCookie("refreshToken");
-    res.sendStatus(200);
+    res.sendStatus(204);
   } catch (e) {
     res.sendStatus(403);
   }
