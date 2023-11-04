@@ -100,7 +100,7 @@ interface UserPayload extends jwt.JwtPayload {
   id: string;
 }
 
-function refreshAccessToken(req: Request, res: Response) {
+async function refreshAccessToken(req: Request, res: Response) {
   try {
     const validateCookies = CookiesSchema.safeParse(req.cookies);
 
@@ -108,18 +108,82 @@ function refreshAccessToken(req: Request, res: Response) {
       return res.status(401).send({ error: "Refresh token is required." });
 
     const { refreshToken } = validateCookies.data;
-    const decoded = jwt.verify(
+
+    const foundUser = await prisma.user.findFirst({
+      where: {
+        refreshToken: refreshToken,
+      },
+    });
+
+    if (!foundUser) {
+      jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_KEY!,
+        async (err, decoded) => {
+          res.clearCookie("refreshToken");
+          if (err)
+            return res.status(403).send({ error: "Invalid refresh token" });
+          await prisma.user.update({
+            where: {
+              id: (decoded as UserPayload).id,
+            },
+            data: {
+              refreshToken: "",
+            },
+          });
+        }
+      );
+      return res.status(403).send({ error: "Reuse token detected." });
+    }
+
+    jwt.verify(
       refreshToken,
-      process.env.REFRESH_TOKEN_KEY!
-    ) as UserPayload;
-    const accessToken = jwt.sign(
-      { id: decoded.id },
+      process.env.REFRESH_TOKEN_KEY!,
+      async (err, decoded) => {
+        if (err) {
+          await prisma.user.update({
+            where: {
+              id: (decoded as UserPayload).id,
+            },
+            data: {
+              refreshToken: "",
+            },
+          });
+          return res.status(401).send({ error: "Refresh token expired" });
+        }
+      }
+    );
+
+    const newAccessToken = jwt.sign(
+      { id: foundUser.id },
       process.env.ACCESS_TOKEN_KEY!,
       { expiresIn: "15m" }
     );
-    res.status(200).send({ accessToken: accessToken });
+    const newRefreshToken = jwt.sign(
+      { id: foundUser.id },
+      process.env.REFRESH_TOKEN_KEY!,
+      { expiresIn: "1day" }
+    );
+
+    await prisma.user.update({
+      where: {
+        id: foundUser.id,
+      },
+      data: {
+        refreshToken: newRefreshToken,
+      },
+    });
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+      path: "/",
+    });
+
+    res.status(200).send({ accessToken: newAccessToken });
   } catch (e) {
-    res.status(401).send({ error: "Refresh token expired." });
+    res.status(500).send({ error: "Internal server error." });
   }
 }
 
