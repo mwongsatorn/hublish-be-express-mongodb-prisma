@@ -124,33 +124,37 @@ function refreshAccessToken(req: Request, res: Response) {
 }
 
 async function logOut(req: Request, res: Response) {
-  try {
-    const validateCookies = CookiesSchema.safeParse(req.cookies);
+  const validateCookies = CookiesSchema.safeParse(req.cookies);
 
-    if (!validateCookies.success)
-      return res.status(401).send({ error: "Refresh token is required" });
+  if (!validateCookies.success)
+    return res.status(401).send({ error: "Refresh token is required." });
 
-    const { refreshToken } = validateCookies.data;
-    const decoded = jwt.verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_KEY!
-    ) as UserPayload;
+  const { refreshToken } = validateCookies.data;
+  const decoded = jwt.verify(
+    refreshToken,
+    process.env.REFRESH_TOKEN_KEY!
+  ) as UserPayload;
 
-    const foundUser = await prisma.user.update({
-      where: {
-        id: decoded.id,
-      },
-      data: {
-        refreshToken: "",
-      },
-    });
+  const foundUser = await prisma.user.findUnique({
+    where: {
+      id: decoded.id,
+      refreshToken: refreshToken,
+    },
+  });
 
-    if (!foundUser) res.sendStatus(404);
-    res.clearCookie("refreshToken");
-    res.sendStatus(204);
-  } catch (e) {
-    res.sendStatus(403);
-  }
+  if (!foundUser) return res.status(401).send({ error: "Unauthorized" });
+
+  await prisma.user.update({
+    where: {
+      id: foundUser.id,
+    },
+    data: {
+      refreshToken: "",
+    },
+  });
+
+  res.clearCookie("refreshToken");
+  res.sendStatus(204);
 }
 
 export default {
