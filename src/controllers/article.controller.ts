@@ -33,6 +33,7 @@ async function createArticle(req: Request, res: Response) {
 }
 
 async function getArticle(req: Request, res: Response) {
+  const { id } = req as ArticleRequest;
   const foundArticle = await prisma.article.findFirst({
     where: {
       slug: req.params.slug,
@@ -52,7 +53,15 @@ async function getArticle(req: Request, res: Response) {
 
   if (!foundArticle) return res.sendStatus(404);
 
-  res.status(200).send(foundArticle);
+  const favouriteRelation = await prisma.favourite.findFirst({
+    where: {
+      user_id: id,
+      article_id: foundArticle.id,
+    },
+  });
+  const favourited = !id ? false : favouriteRelation ? true : false;
+
+  res.status(200).send({ ...foundArticle, favourited: favourited });
 }
 
 async function editArticle(req: Request, res: Response) {
