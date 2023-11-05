@@ -73,12 +73,14 @@ async function logIn(req: Request, res: Response) {
     { expiresIn: "1days" }
   );
 
-  await prisma.user.update({
+  const loggedInUser = await prisma.user.update({
     where: {
       id: foundUser.id,
     },
     data: {
-      refreshToken: refreshToken,
+      refreshToken: {
+        push: refreshToken,
+      },
     },
   });
 
@@ -89,7 +91,7 @@ async function logIn(req: Request, res: Response) {
     path: "/",
   });
 
-  const resData = excludeFields(foundUser, ["refreshToken", "password"]);
+  const resData = excludeFields(loggedInUser, ["refreshToken", "password"]);
   res.status(200).send({
     ...resData,
     accessToken: accessToken,
@@ -111,7 +113,9 @@ async function refreshAccessToken(req: Request, res: Response) {
 
     const foundUser = await prisma.user.findFirst({
       where: {
-        refreshToken: refreshToken,
+        refreshToken: {
+          has: refreshToken,
+        },
       },
     });
 
@@ -128,13 +132,17 @@ async function refreshAccessToken(req: Request, res: Response) {
               id: (decoded as UserPayload).id,
             },
             data: {
-              refreshToken: "",
+              refreshToken: [],
             },
           });
         }
       );
       return res.status(403).send({ error: "Reuse token detected." });
     }
+
+    foundUser.refreshToken = foundUser.refreshToken.filter(
+      (token) => token !== refreshToken
+    );
 
     jwt.verify(
       refreshToken,
@@ -146,7 +154,9 @@ async function refreshAccessToken(req: Request, res: Response) {
               id: (decoded as UserPayload).id,
             },
             data: {
-              refreshToken: "",
+              refreshToken: {
+                set: foundUser.refreshToken,
+              },
             },
           });
           return res.status(401).send({ error: "Refresh token expired" });
@@ -170,7 +180,9 @@ async function refreshAccessToken(req: Request, res: Response) {
         id: foundUser.id,
       },
       data: {
-        refreshToken: newRefreshToken,
+        refreshToken: {
+          set: [...foundUser.refreshToken, newRefreshToken],
+        },
       },
     });
 
@@ -190,35 +202,38 @@ async function refreshAccessToken(req: Request, res: Response) {
 async function logOut(req: Request, res: Response) {
   const validateCookies = CookiesSchema.safeParse(req.cookies);
 
-  if (!validateCookies.success)
-    return res.status(401).send({ error: "Refresh token is required." });
+  if (!validateCookies.success) return res.sendStatus(204);
 
   const { refreshToken } = validateCookies.data;
-  const decoded = jwt.verify(
-    refreshToken,
-    process.env.REFRESH_TOKEN_KEY!
-  ) as UserPayload;
 
-  const foundUser = await prisma.user.findUnique({
+  res.clearCookie("refreshToken");
+
+  const foundUser = await prisma.user.findFirst({
     where: {
-      id: decoded.id,
-      refreshToken: refreshToken,
+      refreshToken: {
+        has: refreshToken,
+      },
     },
   });
 
-  if (!foundUser) return res.status(401).send({ error: "Unauthorized" });
+  if (!foundUser) return res.sendStatus(204);
+
+  foundUser.refreshToken = foundUser.refreshToken.filter(
+    (token) => token !== refreshToken
+  );
 
   await prisma.user.update({
     where: {
       id: foundUser.id,
     },
     data: {
-      refreshToken: "",
+      refreshToken: {
+        set: foundUser.refreshToken,
+      },
     },
   });
 
-  res.clearCookie("refreshToken");
-  res.sendStatus(204);
+  return res.sendStatus(204);
 }
 
 export default {
