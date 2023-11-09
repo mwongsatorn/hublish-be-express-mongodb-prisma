@@ -7,19 +7,23 @@ const router = express.Router();
 
 router.get("/current", requireLogin, userController.getCurrentUser);
 
-router.get("/:username/profile", isLoggedIn, userController.getUserProfile);
-
 router.put("/settings/email", requireLogin, userController.changeEmail);
+
 router.put("/settings/password", requireLogin, userController.changePassword);
 
 router.put("/settings/profile", requireLogin, userController.changeProfile);
 
-router.post("/:user_id/follow", requireLogin, userController.followUser);
+router.get("/:username/profile", isLoggedIn, userController.getUserProfile);
 
-router.delete("/:user_id/follow", requireLogin, userController.unfollowUser);
+router.post("/:username/follow", requireLogin, userController.followUser);
 
-router.get("/:user_id/followers", isLoggedIn, userController.getUserFollowers);
+router.delete("/:username/follow", requireLogin, userController.unfollowUser);
 
-router.get("/:user_id/followings", isLoggedIn, userController.getUserFollowings);
+router.get("/:username/followers", isLoggedIn, userController.getUserFollowers);
 
+router.get(
+  "/:username/followings",
+  isLoggedIn,
+  userController.getUserFollowings
+);
 export default router;

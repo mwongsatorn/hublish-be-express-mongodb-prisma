@@ -21,7 +21,6 @@ async function createArticle(req: Request, res: Response) {
   }
   const { id } = req as ArticleRequest;
   const slug = generateSlug(validateBody.data.title);
-  console.log(validateBody.data, slug);
   const createdArticle = await prisma.article.create({
     data: {
       ...validateBody.data,
@@ -249,8 +248,11 @@ async function unfavouriteArticle(req: Request, res: Response) {
 }
 
 async function getFavouriteArticles(req: Request, res: Response) {
-  const { user_id } = req.params;
   const { id: loggedInUserId } = req as ArticleRequest;
+  const user = await prisma.user.findUnique({
+    where: { username: req.params.username },
+  });
+  if (!user) return res.status(404).send({ error: "User not found." });
   const userFavouriteRelations = {
     $lookup: {
       from: "Favourite",
@@ -258,7 +260,7 @@ async function getFavouriteArticles(req: Request, res: Response) {
         {
           $match: {
             user_id: {
-              $oid: user_id,
+              $oid: user.id,
             },
           },
         },
@@ -507,14 +509,17 @@ async function getFeedArticles(req: Request, res: Response) {
 }
 
 async function getUserCreatedArticles(req: Request, res: Response) {
-  const { user_id } = req.params;
+  const user = await prisma.user.findUnique({
+    where: { username: req.params.username },
+  });
+  if (!user) return res.status(404).send({ error: "User not found." });
   const { id: loggedInUserId } = req as ArticleRequest;
 
   const articleList = [
     {
       $match: {
         author_id: {
-          $oid: user_id,
+          $oid: user.id,
         },
       },
     },
