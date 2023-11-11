@@ -277,27 +277,74 @@ async function getUserFollowers(req: Request, res: Response) {
   });
 
   if (!user) return res.status(404).send({ error: "User not found." });
-  const followRelations = await prisma.follow.findMany({
-    where: {
-      following_id: user.id,
-    },
-  });
 
-  const followerIds = followRelations.map((obj) => obj.follower_id);
-
-  const followerUsers = await prisma.user.findMany({
-    where: {
-      id: {
-        in: followerIds,
+  const followerUsers = await prisma.user.aggregateRaw({
+    pipeline: [
+      {
+        $lookup: {
+          from: "Follow",
+          pipeline: [
+            {
+              $match: {
+                following_id: {
+                  $oid: user.id,
+                },
+              },
+            },
+          ],
+          as: "userFollowRelations",
+        },
       },
-    },
-    select: {
-      id: true,
-      username: true,
-      bio: true,
-      name: true,
-      image: true,
-    },
+      {
+        $match: {
+          $expr: {
+            $in: ["$_id", "$userFollowRelations.follower_id"],
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "Follow",
+          let: {
+            user_id: "$_id",
+          },
+          pipeline: [
+            {
+              $match: {
+                follower_id: {
+                  $oid: (req as UserRequest).id,
+                },
+                $expr: {
+                  $eq: ["$following_id", "$$user_id"],
+                },
+              },
+            },
+          ],
+          as: "loggedInUserFollowRelations",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          id: {
+            $toString: "$_id",
+          },
+          username: 1,
+          name: 1,
+          bio: 1,
+          image: 1,
+          followed: {
+            $cond: {
+              if: {
+                $in: ["$_id", "$loggedInUserFollowRelations.following_id"],
+              },
+              then: true,
+              else: false,
+            },
+          },
+        },
+      },
+    ],
   });
 
   res.status(200).send(followerUsers);
@@ -311,27 +358,74 @@ async function getUserFollowings(req: Request, res: Response) {
   });
 
   if (!user) return res.status(404).send({ error: "User not found." });
-  const followRelations = await prisma.follow.findMany({
-    where: {
-      follower_id: user.id,
-    },
-  });
 
-  const followingIds = followRelations.map((obj) => obj.following_id);
-
-  const followingUsers = await prisma.user.findMany({
-    where: {
-      id: {
-        in: followingIds,
+  const followingUsers = await prisma.user.aggregateRaw({
+    pipeline: [
+      {
+        $lookup: {
+          from: "Follow",
+          pipeline: [
+            {
+              $match: {
+                follower_id: {
+                  $oid: user.id,
+                },
+              },
+            },
+          ],
+          as: "userFollowRelations",
+        },
       },
-    },
-    select: {
-      id: true,
-      username: true,
-      bio: true,
-      name: true,
-      image: true,
-    },
+      {
+        $match: {
+          $expr: {
+            $in: ["$_id", "$userFollowRelations.following_id"],
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "Follow",
+          let: {
+            user_id: "$_id",
+          },
+          pipeline: [
+            {
+              $match: {
+                follower_id: {
+                  $oid: (req as UserRequest).id,
+                },
+                $expr: {
+                  $eq: ["$following_id", "$$user_id"],
+                },
+              },
+            },
+          ],
+          as: "loggedInUserFollowRelations",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          id: {
+            $toString: "$_id",
+          },
+          username: 1,
+          name: 1,
+          bio: 1,
+          image: 1,
+          followed: {
+            $cond: {
+              if: {
+                $in: ["$_id", "$loggedInUserFollowRelations.following_id"],
+              },
+              then: true,
+              else: false,
+            },
+          },
+        },
+      },
+    ],
   });
 
   res.status(200).send(followingUsers);
