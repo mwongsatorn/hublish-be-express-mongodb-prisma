@@ -624,6 +624,118 @@ async function getUserCreatedArticles(req: Request, res: Response) {
   res.status(200).send(createdArticles);
 }
 
+async function searchArticles(req: Request, res: Response) {
+  const { id: loggedInUserId } = req as ArticleRequest;
+  const { tag, title, limit = 10, page = 1 } = req.query;
+  const query = [];
+
+  if (title)
+    query.push({
+      title: { $regex: title, $options: "i" },
+    });
+  if (tag)
+    query.push({
+      tags: tag,
+    });
+
+  const articles = await prisma.article.aggregateRaw({
+    pipeline: [
+      {
+        $match: query.length > 0 ? { $or: query } : {},
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $limit: parseInt(limit as string),
+      },
+      {
+        $skip: parseInt(limit as string) * (parseInt(page as string) - 1),
+      },
+      {
+        $lookup: {
+          from: "User",
+          let: { author_id: "$author_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$_id", "$$author_id"],
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                username: 1,
+                name: 1,
+                bio: 1,
+                image: 1,
+              },
+            },
+          ],
+          as: "author",
+        },
+      },
+      {
+        $lookup: {
+          from: "Favourite",
+          let: {
+            article_id: "$_id",
+          },
+          pipeline: [
+            {
+              $match: {
+                user_id: {
+                  $oid: loggedInUserId,
+                },
+                $expr: {
+                  $eq: ["$article_id", "$$article_id"],
+                },
+              },
+            },
+          ],
+          as: "loggedInUserFavouriteRelations",
+        },
+      },
+      {
+        $addFields: {
+          id: {
+            $toString: "$_id",
+          },
+          author_id: {
+            $toString: "$author_id",
+          },
+          createdAt: {
+            $toString: "$createdAt",
+          },
+          updatedAt: {
+            $toString: "$updatedAt",
+          },
+          favourited: {
+            $cond: {
+              if: {
+                $in: ["$_id", "$loggedInUserFavouriteRelations.article_id"],
+              },
+              then: true,
+              else: false,
+            },
+          },
+          author: {
+            $arrayElemAt: ["$author", 0],
+          },
+        },
+      },
+      {
+        $unset: ["_id", "loggedInUserFavouriteRelations", "followingRelations"],
+      },
+    ],
+  });
+  res.send(articles);
+}
+
 export default {
   createArticle,
   getArticle,
@@ -637,4 +749,5 @@ export default {
   getFavouriteArticles,
   getFeedArticles,
   getUserCreatedArticles,
+  searchArticles,
 };

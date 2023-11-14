@@ -5,6 +5,8 @@ import { isLoggedIn } from "../middlewares/isLoggedIn";
 
 const router = express.Router();
 
+router.get("/", isLoggedIn, articleContoller.searchArticles);
+
 router.post("/", requireLogin, articleContoller.createArticle);
 
 router.get("/feed", requireLogin, articleContoller.getFeedArticles);
