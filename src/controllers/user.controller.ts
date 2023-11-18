@@ -170,7 +170,7 @@ async function followUser(req: Request, res: Response) {
 
   if (isFollowing)
     return res
-      .sendStatus(409)
+      .status(409)
       .send({ error: "You have already followed this user." });
 
   await prisma.$transaction(async (tx) => {
@@ -431,6 +431,82 @@ async function getUserFollowings(req: Request, res: Response) {
   res.status(200).send(followingUsers);
 }
 
+async function searchUsers(req: Request, res: Response) {
+  const { query = "", limit = 10, page = 1 } = req.query;
+  const { id: loggedInUserId } = req as UserRequest;
+  const foundUsers = await prisma.user.aggregateRaw({
+    pipeline: [
+      {
+        $match: {
+          $or: [
+            {
+              username: {
+                $regex: query,
+                $options: "i",
+              },
+            },
+            {
+              name: {
+                $regex: query,
+                $options: "i",
+              },
+            },
+          ],
+        },
+      },
+      {
+        $limit: parseInt(limit as string),
+      },
+      {
+        $skip: parseInt(limit as string) * (parseInt(page as string) - 1),
+      },
+      {
+        $lookup: {
+          from: "Follow",
+          let: {
+            user_id: "$_id",
+          },
+          pipeline: [
+            {
+              $match: {
+                follower_id: {
+                  $oid: loggedInUserId,
+                },
+                $expr: {
+                  $eq: ["$following_id", "$$user_id"],
+                },
+              },
+            },
+          ],
+          as: "loggedInUserFollowRelations",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          id: {
+            $toString: "$_id",
+          },
+          username: 1,
+          name: 1,
+          bio: 1,
+          image: 1,
+          followed: {
+            $cond: {
+              if: {
+                $in: ["$_id", "$loggedInUserFollowRelations.following_id"],
+              },
+              then: true,
+              else: false,
+            },
+          },
+        },
+      },
+    ],
+  });
+  res.status(200).send(foundUsers);
+}
+
 export default {
   getCurrentUser,
   getUserProfile,
@@ -441,4 +517,5 @@ export default {
   unfollowUser,
   getUserFollowers,
   getUserFollowings,
+  searchUsers,
 };

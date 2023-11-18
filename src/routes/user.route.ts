@@ -5,6 +5,8 @@ import { isLoggedIn } from "../middlewares/isLoggedIn";
 
 const router = express.Router();
 
+router.get("/", isLoggedIn, userController.searchUsers);
+
 router.get("/current", requireLogin, userController.getCurrentUser);
 
 router.put("/settings/email", requireLogin, userController.changeEmail);
