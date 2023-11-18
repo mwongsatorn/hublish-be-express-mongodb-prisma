@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import nocache from "./middlewares/nocache";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.route";
 import userRoutes from "./routes/user.route";
@@ -13,6 +14,7 @@ app.use(
     credentials: true,
   })
 );
+app.use(nocache());
 app.use(express.json());
 app.use(cookieParser());
 
