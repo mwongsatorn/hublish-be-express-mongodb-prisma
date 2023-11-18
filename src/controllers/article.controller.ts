@@ -626,18 +626,17 @@ async function getUserCreatedArticles(req: Request, res: Response) {
 
 async function searchArticles(req: Request, res: Response) {
   const { id: loggedInUserId } = req as ArticleRequest;
-  const { tag, title, limit = 10, page = 1 } = req.query;
+  const { tags, title, limit = 10, page = 1 } = req.query;
   const query = [];
 
   if (title)
     query.push({
       title: { $regex: title, $options: "i" },
     });
-  if (tag)
+  if (tags)
     query.push({
-      tags: tag,
+      tags: { $regex: tags, $options: "i" },
     });
-
   const articles = await prisma.article.aggregateRaw({
     pipeline: [
       {
