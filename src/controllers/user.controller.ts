@@ -437,74 +437,125 @@ async function searchUsers(req: Request, res: Response) {
   const foundUsers = await prisma.user.aggregateRaw({
     pipeline: [
       {
-        $match: {
-          $or: [
-            {
-              username: {
-                $regex: query,
-                $options: "i",
-              },
-            },
-            {
-              name: {
-                $regex: query,
-                $options: "i",
-              },
-            },
-          ],
-        },
-      },
-      {
-        $limit: parseInt(limit as string),
-      },
-      {
-        $skip: parseInt(limit as string) * (parseInt(page as string) - 1),
-      },
-      {
-        $lookup: {
-          from: "Follow",
-          let: {
-            user_id: "$_id",
-          },
-          pipeline: [
+        $facet: {
+          total_results: [
             {
               $match: {
-                follower_id: {
-                  $oid: loggedInUserId,
+                $or: [
+                  {
+                    username: {
+                      $regex: query,
+                      $options: "i",
+                    },
+                  },
+                  {
+                    name: {
+                      $regex: query,
+                      $options: "i",
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $count: "count",
+            },
+          ],
+          results: [
+            {
+              $match: {
+                $or: [
+                  {
+                    username: {
+                      $regex: query,
+                      $options: "i",
+                    },
+                  },
+                  {
+                    name: {
+                      $regex: query,
+                      $options: "i",
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $limit: parseInt(limit as string),
+            },
+            {
+              $skip: parseInt(limit as string) * (parseInt(page as string) - 1),
+            },
+            {
+              $lookup: {
+                from: "Follow",
+                let: {
+                  user_id: "$_id",
                 },
-                $expr: {
-                  $eq: ["$following_id", "$$user_id"],
+                pipeline: [
+                  {
+                    $match: {
+                      follower_id: {
+                        $oid: loggedInUserId,
+                      },
+                      $expr: {
+                        $eq: ["$following_id", "$$user_id"],
+                      },
+                    },
+                  },
+                ],
+                as: "loggedInUserFollowRelations",
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                id: {
+                  $toString: "$_id",
+                },
+                username: 1,
+                name: 1,
+                bio: 1,
+                image: 1,
+                followed: {
+                  $cond: {
+                    if: {
+                      $in: [
+                        "$_id",
+                        "$loggedInUserFollowRelations.following_id",
+                      ],
+                    },
+                    then: true,
+                    else: false,
+                  },
                 },
               },
             },
           ],
-          as: "loggedInUserFollowRelations",
         },
       },
       {
-        $project: {
-          _id: 0,
-          id: {
-            $toString: "$_id",
+        $addFields: {
+          page: {
+            $literal: page,
           },
-          username: 1,
-          name: 1,
-          bio: 1,
-          image: 1,
-          followed: {
-            $cond: {
-              if: {
-                $in: ["$_id", "$loggedInUserFollowRelations.following_id"],
-              },
-              then: true,
-              else: false,
+          total_results: {
+            $arrayElemAt: ["$total_results.count", 0],
+          },
+        },
+      },
+      {
+        $addFields: {
+          total_pages: {
+            $ceil: {
+              $divide: ["$total_results", limit],
             },
           },
         },
       },
     ],
   });
-  res.status(200).send(foundUsers);
+  res.status(200).send(foundUsers[0]);
 }
 
 export default {
