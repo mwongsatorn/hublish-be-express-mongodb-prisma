@@ -628,7 +628,6 @@ async function searchArticles(req: Request, res: Response) {
   const { id: loggedInUserId } = req as ArticleRequest;
   const { tags, title, limit = 10, page = 1 } = req.query;
   const query = [];
-
   if (title)
     query.push({
       title: { $regex: title, $options: "i" },
@@ -637,7 +636,6 @@ async function searchArticles(req: Request, res: Response) {
     query.push({
       tags: { $regex: tags, $options: "i" },
     });
-
   const articles = await prisma.article.aggregateRaw({
     pipeline: [
       {
@@ -659,13 +657,13 @@ async function searchArticles(req: Request, res: Response) {
                 createdAt: -1,
               },
             },
-
-            {
-              $limit: parseInt(limit as string),
-            },
             {
               $skip: parseInt(limit as string) * (parseInt(page as string) - 1),
             },
+            {
+              $limit: parseInt(limit as string),
+            },
+
             {
               $lookup: {
                 from: "User",
@@ -753,10 +751,18 @@ async function searchArticles(req: Request, res: Response) {
       {
         $addFields: {
           page: {
-            $literal: page,
+            $literal: parseInt(page as string),
           },
           total_results: {
-            $arrayElemAt: ["$total_results.count", 0],
+            $cond: {
+              if: {
+                $ne: [{ $size: "$total_results" }, 0],
+              },
+              then: {
+                $arrayElemAt: ["$total_results.count", 0],
+              },
+              else: 0,
+            },
           },
         },
       },
@@ -764,7 +770,7 @@ async function searchArticles(req: Request, res: Response) {
         $addFields: {
           total_pages: {
             $ceil: {
-              $divide: ["$total_results", limit],
+              $divide: ["$total_results", parseInt(limit as string)],
             },
           },
         },
