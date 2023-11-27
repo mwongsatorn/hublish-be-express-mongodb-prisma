@@ -481,10 +481,10 @@ async function searchUsers(req: Request, res: Response) {
               },
             },
             {
-              $limit: parseInt(limit as string),
+              $skip: parseInt(limit as string) * (parseInt(page as string) - 1),
             },
             {
-              $skip: parseInt(limit as string) * (parseInt(page as string) - 1),
+              $limit: parseInt(limit as string),
             },
             {
               $lookup: {
@@ -537,10 +537,18 @@ async function searchUsers(req: Request, res: Response) {
       {
         $addFields: {
           page: {
-            $literal: page,
+            $literal: parseInt(page as string),
           },
           total_results: {
-            $arrayElemAt: ["$total_results.count", 0],
+            $cond: {
+              if: {
+                $ne: [{ $size: "$total_results" }, 0],
+              },
+              then: {
+                $arrayElemAt: ["$total_results.count", 0],
+              },
+              else: 0,
+            },
           },
         },
       },
@@ -548,7 +556,7 @@ async function searchUsers(req: Request, res: Response) {
         $addFields: {
           total_pages: {
             $ceil: {
-              $divide: ["$total_results", limit],
+              $divide: ["$total_results", parseInt(limit as string)],
             },
           },
         },
