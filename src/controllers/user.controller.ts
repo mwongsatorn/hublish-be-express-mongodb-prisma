@@ -22,11 +22,11 @@ async function getCurrentUser(req: Request, res: Response) {
       id: id,
     },
   });
-  if (!foundUser) return res.sendStatus(404);
+  if (!foundUser) return res.status(404).json({ error: "No user found." });
 
   const resData = excludeFields(foundUser, ["refreshToken", "password"]);
 
-  res.status(200).send(resData);
+  res.status(200).json(resData);
 }
 
 async function getUserProfile(req: Request, res: Response) {
@@ -36,7 +36,7 @@ async function getUserProfile(req: Request, res: Response) {
       username: req.params.username,
     },
   });
-  if (!foundUser) return res.sendStatus(404);
+  if (!foundUser) return res.status(404).json({ error: "No user found." });
 
   const followRelation = await prisma.follow.findFirst({
     where: {
@@ -49,12 +49,13 @@ async function getUserProfile(req: Request, res: Response) {
 
   const followed = !id ? false : followRelation ? true : false;
 
-  res.status(200).send({ ...resData, followed: followed });
+  res.status(200).json({ ...resData, followed: followed });
 }
 
 async function changeEmail(req: Request, res: Response) {
   const validateBody = ChangeEmailSchema.safeParse(req.body);
-  if (!validateBody.success) return res.sendStatus(400);
+  if (!validateBody.success)
+    return res.status(400).json({ error: "Request body is invalid" });
   const { id } = req as UserRequest;
   const foundUser = await prisma.user.findFirst({
     where: {
@@ -62,14 +63,15 @@ async function changeEmail(req: Request, res: Response) {
     },
   });
 
-  if (!foundUser) return res.sendStatus(404);
+  if (!foundUser) return res.status(404).json({ error: "No user found." });
 
   const isSamePassword = await bcrypt.compare(
     validateBody.data.password,
     foundUser.password
   );
 
-  if (!isSamePassword) return res.sendStatus(401);
+  if (!isSamePassword)
+    return res.status(401).json({ error: "Your password is incorrect." });
 
   const isUsedEmail = await prisma.user.findFirst({
     where: {
@@ -77,7 +79,8 @@ async function changeEmail(req: Request, res: Response) {
     },
   });
 
-  if (isUsedEmail) return res.sendStatus(409);
+  if (isUsedEmail)
+    return res.status(409).json({ error: "This email is already used." });
 
   const updatedUser = await prisma.user.update({
     where: {
@@ -90,12 +93,13 @@ async function changeEmail(req: Request, res: Response) {
 
   const resData = excludeFields(updatedUser, ["refreshToken", "password"]);
 
-  res.status(200).send(resData);
+  res.status(200).json(resData);
 }
 
 async function changePassword(req: Request, res: Response) {
   const validateBody = ChangePasswordSchema.safeParse(req.body);
-  if (!validateBody.success) return res.sendStatus(400);
+  if (!validateBody.success)
+    return res.status(400).json({ error: "Request body is invalid" });
   const { id } = req as UserRequest;
   const foundUser = await prisma.user.findFirst({
     where: {
@@ -103,13 +107,14 @@ async function changePassword(req: Request, res: Response) {
     },
   });
 
-  if (!foundUser) return res.sendStatus(404);
+  if (!foundUser) return res.status(404).json({ error: "No user found." });
 
   const isSamePassword = await bcrypt.compare(
     validateBody.data.currentPassword,
     foundUser.password
   );
-  if (!isSamePassword) return res.sendStatus(401);
+  if (!isSamePassword)
+    return res.status(401).json({ error: "Your password is incorrect." });
 
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(validateBody.data.newPassword, salt);
@@ -122,13 +127,15 @@ async function changePassword(req: Request, res: Response) {
       password: hashedPassword,
     },
   });
+
   const resData = excludeFields(updatedUser, ["refreshToken", "password"]);
-  res.status(200).send(resData);
+  res.status(200).json(resData);
 }
 
 async function changeProfile(req: Request, res: Response) {
   const validateBody = ChangeProfileSchema.safeParse(req.body);
-  if (!validateBody.success) return res.sendStatus(400);
+  if (!validateBody.success)
+    return res.status(400).json({ error: "Request body is invalid" });
 
   const { id } = req as UserRequest;
 
@@ -141,11 +148,11 @@ async function changeProfile(req: Request, res: Response) {
     },
   });
 
-  if (!updatedUser) return res.sendStatus(404);
+  if (!updatedUser) return res.status(404).json({ error: "No user found." });
 
   const resData = excludeFields(updatedUser, ["refreshToken", "password"]);
 
-  res.status(200).send(resData);
+  res.status(200).json(resData);
 }
 
 async function followUser(req: Request, res: Response) {
@@ -156,10 +163,10 @@ async function followUser(req: Request, res: Response) {
     },
   });
 
-  if (!userToFollow) return res.status(404).send({ error: "User not found." });
+  if (!userToFollow) return res.status(404).json({ error: "No user found." });
 
   if (loggedInUserId === userToFollow.id)
-    return res.status(400).send({ error: "You cannot follow yourself." });
+    return res.status(409).json({ error: "You cannot follow yourself." });
 
   const isFollowing = await prisma.follow.findFirst({
     where: {
@@ -171,7 +178,7 @@ async function followUser(req: Request, res: Response) {
   if (isFollowing)
     return res
       .status(409)
-      .send({ error: "You have already followed this user." });
+      .json({ error: "You have already followed this user." });
 
   await prisma.$transaction(async (tx) => {
     await tx.follow.create({
@@ -204,7 +211,7 @@ async function followUser(req: Request, res: Response) {
     });
 
     const resData = excludeFields(followingUser, ["password", "refreshToken"]);
-    return res.status(201).send(resData);
+    return res.status(201).json(resData);
   });
 }
 
@@ -217,11 +224,10 @@ async function unfollowUser(req: Request, res: Response) {
     },
   });
 
-  if (!userToUnfollow)
-    return res.status(404).send({ error: "User not found." });
+  if (!userToUnfollow) return res.status(404).json({ error: "No user found." });
 
   if (loggedInUserId === userToUnfollow.id)
-    return res.status(409).send({ error: "You cannot unfollow yourself." });
+    return res.status(409).json({ error: "You cannot unfollow yourself." });
 
   const isFollowing = await prisma.follow.findFirst({
     where: {
@@ -232,8 +238,8 @@ async function unfollowUser(req: Request, res: Response) {
 
   if (!isFollowing)
     return res
-      .sendStatus(404)
-      .send({ error: "You have not followed this user yet." });
+      .status(404)
+      .json({ error: "You have not followed this user yet." });
 
   await prisma.$transaction(async (tx) => {
     await tx.follow.delete({
@@ -265,7 +271,7 @@ async function unfollowUser(req: Request, res: Response) {
     });
 
     const resData = excludeFields(followingUser, ["password", "refreshToken"]);
-    return res.status(200).send(resData);
+    return res.status(200).json(resData);
   });
 }
 
@@ -276,7 +282,7 @@ async function getUserFollowers(req: Request, res: Response) {
     },
   });
 
-  if (!user) return res.status(404).send({ error: "User not found." });
+  if (!user) return res.status(404).json({ error: "No user found." });
 
   const followerUsers = await prisma.user.aggregateRaw({
     pipeline: [
@@ -347,7 +353,7 @@ async function getUserFollowers(req: Request, res: Response) {
     ],
   });
 
-  res.status(200).send(followerUsers);
+  res.status(200).json(followerUsers);
 }
 
 async function getUserFollowings(req: Request, res: Response) {
@@ -357,7 +363,7 @@ async function getUserFollowings(req: Request, res: Response) {
     },
   });
 
-  if (!user) return res.status(404).send({ error: "User not found." });
+  if (!user) return res.status(404).json({ error: "No user found." });
 
   const followingUsers = await prisma.user.aggregateRaw({
     pipeline: [
@@ -428,7 +434,7 @@ async function getUserFollowings(req: Request, res: Response) {
     ],
   });
 
-  res.status(200).send(followingUsers);
+  res.status(200).json(followingUsers);
 }
 
 async function searchUsers(req: Request, res: Response) {
@@ -563,7 +569,7 @@ async function searchUsers(req: Request, res: Response) {
       },
     ],
   });
-  res.status(200).send(foundUsers[0]);
+  res.status(200).json(foundUsers[0]);
 }
 
 export default {
