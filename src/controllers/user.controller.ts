@@ -276,43 +276,39 @@ async function unfollowUser(req: Request, res: Response) {
 }
 
 async function getUserFollowers(req: Request, res: Response) {
-  const user = await prisma.user.findUnique({
+  const targetUser = await prisma.user.findUnique({
     where: {
       username: req.params.username,
     },
   });
 
-  if (!user) return res.status(404).json({ error: "No user found." });
+  if (!targetUser) return res.status(404).json({ error: "No user found." });
 
-  const followerUsers = await prisma.user.aggregateRaw({
+  const followerUsers = await prisma.follow.aggregateRaw({
     pipeline: [
       {
-        $lookup: {
-          from: "Follow",
-          pipeline: [
-            {
-              $match: {
-                following_id: {
-                  $oid: user.id,
-                },
-              },
-            },
-          ],
-          as: "userFollowRelations",
-        },
-      },
-      {
         $match: {
-          $expr: {
-            $in: ["$_id", "$userFollowRelations.follower_id"],
+          following_id: {
+            $oid: targetUser.id,
           },
         },
       },
       {
         $lookup: {
+          from: "User",
+          localField: "follower_id",
+          foreignField: "_id",
+          as: "targetFollower",
+        },
+      },
+      {
+        $unwind: "$targetFollower",
+      },
+      {
+        $lookup: {
           from: "Follow",
           let: {
-            user_id: "$_id",
+            targetFollower_id: "$targetFollower._id",
           },
           pipeline: [
             {
@@ -321,7 +317,7 @@ async function getUserFollowers(req: Request, res: Response) {
                   $oid: (req as UserRequest).id,
                 },
                 $expr: {
-                  $eq: ["$following_id", "$$user_id"],
+                  $eq: ["$following_id", "$$targetFollower_id"],
                 },
               },
             },
@@ -331,19 +327,16 @@ async function getUserFollowers(req: Request, res: Response) {
       },
       {
         $project: {
-          _id: 0,
-          id: {
-            $toString: "$_id",
+          _id: {
+            $toString: "$targetFollower._id",
           },
-          username: 1,
-          name: 1,
-          bio: 1,
-          image: 1,
+          username: "$targetFollower.username",
+          name: "$targetFollower.name",
+          bio: "$targetFollower.bio",
+          image: "$targetFollower.image",
           followed: {
             $cond: {
-              if: {
-                $in: ["$_id", "$loggedInUserFollowRelations.following_id"],
-              },
+              if: { $gt: [{ $size: "$loggedInUserFollowRelations" }, 0] },
               then: true,
               else: false,
             },
