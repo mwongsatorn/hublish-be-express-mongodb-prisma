@@ -11,40 +11,64 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  username      String    @unique
-  password      String
-  email         String    @unique
-  name          String    @default("")
-  bio           String    @default("")
-  image         String    @default("")
-  refreshToken  String    @default("")
-  articles      Article[] @relation("Articles")
-  followings    User[]    @relation("UserFollows", fields: [following_ids], references: [id])
-  following_ids String[]  @unique @db.ObjectId
-  followers     User[]    @relation("UserFollows", fields: [follower_ids], references: [id])
-  follower_ids  String[]  @unique @db.ObjectId
-  comment       Comment?  @relation("CommentAuthor")
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  username       String   @unique
+  password       String
+  email          String   @unique
+  name           String   @default("")
+  bio            String   @default("")
+  image          String   @default("https://api.dicebear.com/7.x/thumbs/svg?radius=50&size=240&backgroundColor=f0f0f0&mouth=variant2&shapeColor=16a34a")
+  refreshToken   String[] @default([])
+  followerCount  Int      @default(0)
+  followingCount Int      @default(0)
+
+  articles          Article[]   @relation("UserArticle")
+  comments          Comment[]   @relation("UserComment")
+  followerRelation  Follow[]    @relation("Follower")
+  followingRelation Follow[]    @relation("Following")
+  favouriteRelation Favourite[] @relation("UserFavourite")
+}
+
+model Favourite {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  user       User    @relation("UserFavourite", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user_id    String  @db.ObjectId
+  article    Article @relation("ArticleFavourite", fields: [article_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  article_id String  @db.ObjectId
+}
+
+model Follow {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  following_id String @db.ObjectId
+  follower_id  String @db.ObjectId
+  follower     User   @relation("Follower", fields: [follower_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  following    User   @relation("Following", fields: [following_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
 
 model Article {
-  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
   title          String
-  slug           String
+  slug           String   @unique
   content        String
-  favouriteCount Int       @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  author         User      @relation("Articles", fields: [author_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  author_id      String    @unique @db.ObjectId
-  comments       Comment[] @relation("Comments")
+  tags           String[]
+  favouriteCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  author_id      String   @db.ObjectId
+
+  author            User        @relation("UserArticle", fields: [author_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  comments          Comment[]   @relation("Comments")
+  favouriteRelation Favourite[] @relation("ArticleFavourite")
 }
 
 model Comment {
-  id               String  @id @default(auto()) @map("_id") @db.ObjectId
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
   body             String
-  aritcle          Article @relation("Comments", fields: [article_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  article_id       String  @unique @db.ObjectId
-  commentAuthor    User    @relation("CommentAuthor", fields: [commentAuthor_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  commentAuthor_id String  @unique @db.ObjectId
+  article_id       String   @db.ObjectId
+  commentAuthor_id String   @db.ObjectId
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  aritcleDetails Article @relation("Comments", fields: [article_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  commentAuthor  User    @relation("UserComment", fields: [commentAuthor_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
