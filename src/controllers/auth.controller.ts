@@ -104,16 +104,24 @@ interface UserPayload extends jwt.JwtPayload {
 }
 
 async function refreshAccessToken(req: Request, res: Response) {
+  const validateCookies = CookiesSchema.safeParse(req.cookies);
+
+  if (!validateCookies.success)
+    return res.status(401).send({ error: "Refresh token required." });
+
+  res.clearCookie("refreshToken");
+
+  const { refreshToken } = validateCookies.data;
+
   try {
-    const validateCookies = CookiesSchema.safeParse(req.cookies);
-
-    if (!validateCookies.success)
-      return res.status(401).send({ error: "Refresh token is required." });
-
-    const { refreshToken } = validateCookies.data;
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_KEY!
+    ) as UserPayload;
 
     const foundUser = await prisma.user.findFirst({
       where: {
+        id: decoded.id,
         refreshToken: {
           has: refreshToken,
         },
@@ -121,49 +129,16 @@ async function refreshAccessToken(req: Request, res: Response) {
     });
 
     if (!foundUser) {
-      jwt.verify(
-        refreshToken,
-        process.env.REFRESH_TOKEN_KEY!,
-        async (err, decoded) => {
-          res.clearCookie("refreshToken");
-          if (err)
-            return res.status(403).send({ error: "Invalid refresh token" });
-          await prisma.user.update({
-            where: {
-              id: (decoded as UserPayload).id,
-            },
-            data: {
-              refreshToken: [],
-            },
-          });
-        }
-      );
+      await prisma.user.update({
+        where: {
+          id: decoded.id,
+        },
+        data: {
+          refreshToken: [],
+        },
+      });
       return res.status(403).send({ error: "Reuse token detected." });
     }
-
-    foundUser.refreshToken = foundUser.refreshToken.filter(
-      (token) => token !== refreshToken
-    );
-
-    jwt.verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_KEY!,
-      async (err, decoded) => {
-        if (err) {
-          await prisma.user.update({
-            where: {
-              id: (decoded as UserPayload).id,
-            },
-            data: {
-              refreshToken: {
-                set: foundUser.refreshToken,
-              },
-            },
-          });
-          return res.status(401).send({ error: "Refresh token expired" });
-        }
-      }
-    );
 
     const newAccessToken = jwt.sign(
       { id: foundUser.id },
@@ -173,17 +148,21 @@ async function refreshAccessToken(req: Request, res: Response) {
     const newRefreshToken = jwt.sign(
       { id: foundUser.id },
       process.env.REFRESH_TOKEN_KEY!,
-      { expiresIn: "1day" }
+      { expiresIn: "1days" }
     );
+
+    const filteredRefreshTokens = foundUser.refreshToken.filter(
+      (token) => token !== refreshToken
+    );
+
+    filteredRefreshTokens.push(newRefreshToken);
 
     await prisma.user.update({
       where: {
         id: foundUser.id,
       },
       data: {
-        refreshToken: {
-          set: [...foundUser.refreshToken, newRefreshToken],
-        },
+        refreshToken: filteredRefreshTokens,
       },
     });
 
@@ -194,9 +173,35 @@ async function refreshAccessToken(req: Request, res: Response) {
       path: "/",
     });
 
-    res.status(200).send({ accessToken: newAccessToken });
+    return res.status(200).send({ accessToken: newAccessToken });
   } catch (e) {
-    res.status(500).send({ error: "Internal server error." });
+    if (e instanceof jwt.JsonWebTokenError)
+      return res.status(401).send({ error: "Invalid token" });
+
+    if (e instanceof jwt.TokenExpiredError) {
+      const decoded = jwt.decode(refreshToken) as UserPayload;
+      const foundUser = await prisma.user.findFirst({
+        where: {
+          id: decoded.id,
+        },
+      });
+
+      const filteredRefreshTokens = foundUser!.refreshToken.filter(
+        (token) => token !== refreshToken
+      );
+
+      await prisma.user.update({
+        where: {
+          id: foundUser!.id,
+        },
+        data: {
+          refreshToken: filteredRefreshTokens,
+        },
+      });
+      return res.status(401).send({ error: "Token expired" });
+    }
+
+    return res.status(500).send({ error: "Internal server error." });
   }
 }
 
