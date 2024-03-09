@@ -22,11 +22,11 @@ export function requireLogin(req: Request, res: Response, next: NextFunction) {
       process.env.ACCESS_TOKEN_KEY!
     ) as UserPayload;
     (req as UserRequest).id = decoded.id;
-    next();
+    return next();
   } catch (e) {
-    if ((e as Error).name === "JsonWebTokenError")
-      res.status(401).send({ error: "Invalid token" });
-    if ((e as Error).name === "TokenExpiredError")
-      res.status(401).send({ error: "Token expired" });
+    if (e instanceof jwt.JsonWebTokenError)
+      return res.status(401).send({ error: "Invalid token" });
+    if (e instanceof jwt.TokenExpiredError)
+      return res.status(401).send({ error: "Token expired" });
   }
 }
