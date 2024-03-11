@@ -249,130 +249,115 @@ async function unfavouriteArticle(req: Request, res: Response) {
 
 async function getFavouriteArticles(req: Request, res: Response) {
   const { id: loggedInUserId } = req as ArticleRequest;
-  const user = await prisma.user.findUnique({
+  const targetUser = await prisma.user.findUnique({
     where: { username: req.params.username },
   });
-  if (!user) return res.status(404).send({ error: "User not found." });
-  const userFavouriteRelations = {
-    $lookup: {
-      from: "Favourite",
-      pipeline: [
-        {
-          $match: {
-            user_id: {
-              $oid: user.id,
-            },
-          },
-        },
-      ],
-      as: "userFavouriteRelations",
-    },
-  };
-  const userFavouriteArticles = [
-    {
-      $match: {
-        $expr: {
-          $in: ["$_id", "$userFavouriteRelations.article_id"],
-        },
-      },
-    },
-    {
-      $sort: {
-        createdAt: -1,
-      },
-    },
-  ];
+  if (!targetUser) return res.status(404).send({ error: "User not found." });
 
-  const loggedInUserFavouriteRelations = {
-    $lookup: {
-      from: "Favourite",
-      let: {
-        article_id: "$_id",
-      },
-      pipeline: [
-        {
-          $match: {
-            user_id: {
-              $oid: loggedInUserId,
-            },
-            $expr: {
-              $eq: ["$article_id", "$$article_id"],
-            },
-          },
-        },
-      ],
-      as: "loggedInUserFavouriteRelations",
-    },
-  };
-  const author = {
-    $lookup: {
-      from: "User",
-      let: { author_id: "$author_id" },
-      pipeline: [
-        {
-          $match: {
-            $expr: {
-              $eq: ["$_id", "$$author_id"],
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            username: 1,
-            name: 1,
-            bio: 1,
-            image: 1,
-          },
-        },
-      ],
-      as: "author",
-    },
-  };
-  const specifyFields = [
-    {
-      $addFields: {
-        id: {
-          $toString: "$_id",
-        },
-        author_id: {
-          $toString: "$author_id",
-        },
-        createdAt: {
-          $toString: "$createdAt",
-        },
-        updatedAt: {
-          $toString: "$updatedAt",
-        },
-        favourited: {
-          $cond: {
-            if: {
-              $in: ["$_id", "$loggedInUserFavouriteRelations.article_id"],
-            },
-            then: true,
-            else: false,
-          },
-        },
-        author: {
-          $arrayElemAt: ["$author", 0],
-        },
-      },
-    },
-    {
-      $unset: [
-        "_id",
-        "userFavouriteRelations",
-        "loggedInUserFavouriteRelations",
-      ],
-    },
-  ];
-  const favouriteArticles = await prisma.article.aggregateRaw({
+  const favouriteArticles = await prisma.favourite.aggregateRaw({
     pipeline: [
-      userFavouriteRelations,
-      ...userFavouriteArticles,
-      author,
-      loggedInUserFavouriteRelations,
-      ...specifyFields,
+      {
+        $match: {
+          user_id: {
+            $oid: targetUser.id,
+          },
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $lookup: {
+          from: "Article",
+          localField: "article_id",
+          foreignField: "_id",
+          as: "targetFavouriteArticle",
+        },
+      },
+      {
+        $unwind: "$targetFavouriteArticle",
+      },
+      {
+        $lookup: {
+          from: "User",
+          let: {
+            author_id: "$targetFavouriteArticle.author_id",
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$_id", "$$author_id"],
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                id: {
+                  $toString: "$_id",
+                },
+                username: 1,
+                name: 1,
+                bio: 1,
+                image: 1,
+              },
+            },
+          ],
+          as: "author",
+        },
+      },
+      {
+        $lookup: {
+          from: "Favourite",
+          let: {
+            t_article_id: "$article_id",
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$$t_article_id", "$article_id"],
+                },
+                user_id: {
+                  $oid: loggedInUserId,
+                },
+              },
+            },
+          ],
+          as: "loggedInUserFavourite",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          id: {
+            $toString: "$targetFavouriteArticle._id",
+          },
+          title: "$targetFavouriteArticle.title",
+          slug: "$targetFavouriteArticle.slug",
+          content: "$targetFavouriteArticle.content",
+          tags: "$targetFavouriteArticle.tags",
+          createdAt: {
+            $toString: "$targetFavouriteArticle.createdAt",
+          },
+          updatedAt: {
+            $toString: "$targetFavouriteArticle.updatedAt",
+          },
+          author_id: {
+            $toString: "$targetFavouriteArticle.author_id",
+          },
+          author: {
+            $arrayElemAt: ["$author", 0],
+          },
+          favouriteCount: "$targetFavouriteArticle.favouriteCount",
+          favourited: {
+            $gt: [{ $size: "$loggedInUserFavourite" }, 0],
+          },
+        },
+      },
     ],
   });
 
