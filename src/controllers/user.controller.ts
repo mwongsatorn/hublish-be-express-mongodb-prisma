@@ -496,7 +496,7 @@ async function searchUsers(req: Request, res: Response) {
                     },
                   },
                 ],
-                as: "loggedInUserFollowRelations",
+                as: "loggedInUserFollowing",
               },
             },
             {
@@ -510,16 +510,7 @@ async function searchUsers(req: Request, res: Response) {
                 bio: 1,
                 image: 1,
                 followed: {
-                  $cond: {
-                    if: {
-                      $in: [
-                        "$_id",
-                        "$loggedInUserFollowRelations.following_id",
-                      ],
-                    },
-                    then: true,
-                    else: false,
-                  },
+                  $gt: [{ $size: "$loggedInUserFollowing" }, 0],
                 },
               },
             },
@@ -528,9 +519,6 @@ async function searchUsers(req: Request, res: Response) {
       },
       {
         $addFields: {
-          page: {
-            $literal: parseInt(page as string),
-          },
           total_results: {
             $cond: {
               if: {
@@ -545,12 +533,17 @@ async function searchUsers(req: Request, res: Response) {
         },
       },
       {
-        $addFields: {
+        $project: {
+          total_results: 1,
           total_pages: {
             $ceil: {
               $divide: ["$total_results", parseInt(limit as string)],
             },
           },
+          page: {
+            $literal: parseInt(page as string),
+          },
+          results: 1,
         },
       },
     ],
