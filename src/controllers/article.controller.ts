@@ -367,126 +367,114 @@ async function getFavouriteArticles(req: Request, res: Response) {
 async function getFeedArticles(req: Request, res: Response) {
   const { id: loggedInUserId } = req as ArticleRequest;
 
-  const followingRelations = {
-    $lookup: {
-      from: "Follow",
-      pipeline: [
-        {
-          $match: {
-            follower_id: {
-              $oid: loggedInUserId,
-            },
-          },
-        },
-      ],
-      as: "followingRelations",
-    },
-  };
-
-  const articlesList = [
-    {
-      $match: {
-        $expr: {
-          $in: ["$author_id", "$followingRelations.following_id"],
-        },
-      },
-    },
-    {
-      $sort: {
-        createdAt: -1,
-      },
-    },
-  ];
-
-  const loggedInUserFavouriteRelations = {
-    $lookup: {
-      from: "Favourite",
-      let: {
-        article_id: "$_id",
-      },
-      pipeline: [
-        {
-          $match: {
-            user_id: {
-              $oid: loggedInUserId,
-            },
-            $expr: {
-              $eq: ["$article_id", "$$article_id"],
-            },
-          },
-        },
-      ],
-      as: "loggedInUserFavouriteRelations",
-    },
-  };
-
-  const author = {
-    $lookup: {
-      from: "User",
-      let: { author_id: "$author_id" },
-      pipeline: [
-        {
-          $match: {
-            $expr: {
-              $eq: ["$_id", "$$author_id"],
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            username: 1,
-            name: 1,
-            bio: 1,
-            image: 1,
-          },
-        },
-      ],
-      as: "author",
-    },
-  };
-
-  const specifyFields = [
-    {
-      $addFields: {
-        id: {
-          $toString: "$_id",
-        },
-        author_id: {
-          $toString: "$author_id",
-        },
-        createdAt: {
-          $toString: "$createdAt",
-        },
-        updatedAt: {
-          $toString: "$updatedAt",
-        },
-        favourited: {
-          $cond: {
-            if: {
-              $in: ["$_id", "$loggedInUserFavouriteRelations.article_id"],
-            },
-            then: true,
-            else: false,
-          },
-        },
-        author: {
-          $arrayElemAt: ["$author", 0],
-        },
-      },
-    },
-    {
-      $unset: ["_id", "loggedInUserFavouriteRelations", "followingRelations"],
-    },
-  ];
-
   const feedArticles = await prisma.article.aggregateRaw({
     pipeline: [
-      followingRelations,
-      ...articlesList,
-      loggedInUserFavouriteRelations,
-      author,
-      ...specifyFields,
+      {
+        $lookup: {
+          from: "Follow",
+          pipeline: [
+            {
+              $match: {
+                follower_id: {
+                  $oid: loggedInUserId,
+                },
+              },
+            },
+          ],
+          as: "followRelations",
+        },
+      },
+      {
+        $match: {
+          $expr: {
+            $in: ["$author_id", "$followRelations.following_id"],
+          },
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $lookup: {
+          from: "User",
+          let: {
+            author_id: "$author_id",
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$_id", "$$author_id"],
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                id: {
+                  $toString: "$_id",
+                },
+                username: 1,
+                name: 1,
+                bio: 1,
+                image: 1,
+              },
+            },
+          ],
+          as: "author",
+        },
+      },
+      {
+        $lookup: {
+          from: "Favourite",
+          let: {
+            article_id: "$_id",
+          },
+          pipeline: [
+            {
+              $match: {
+                user_id: {
+                  $oid: loggedInUserId,
+                },
+                $expr: {
+                  $eq: ["$article_id", "$$article_id"],
+                },
+              },
+            },
+          ],
+          as: "loggedInUserFavourite",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          id: {
+            $toString: "$_id",
+          },
+          title: 1,
+          slug: 1,
+          content: 1,
+          tags: 1,
+          createdAt: {
+            $toString: "$createdAt",
+          },
+          updatedAt: {
+            $toString: "$updatedAt",
+          },
+          author_id: {
+            $toString: "$author_id",
+          },
+          author: {
+            $arrayElemAt: ["$author", 0],
+          },
+          favouriteCount: 1,
+          favourited: {
+            $gt: [{ $size: "$loggedInUserFavourite" }, 0],
+          },
+        },
+      },
     ],
   });
 
