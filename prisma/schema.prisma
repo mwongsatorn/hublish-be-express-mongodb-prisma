@@ -21,6 +21,8 @@ model User {
   refreshToken   String[] @default([])
   followerCount  Int      @default(0)
   followingCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   articles          Article[]   @relation("UserArticle")
   comments          Comment[]   @relation("UserComment")
@@ -35,6 +37,9 @@ model Favourite {
   user_id    String  @db.ObjectId
   article    Article @relation("ArticleFavourite", fields: [article_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
   article_id String  @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Follow {
@@ -43,6 +48,9 @@ model Follow {
   follower_id  String @db.ObjectId
   follower     User   @relation("Follower", fields: [follower_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
   following    User   @relation("Following", fields: [following_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Article {
