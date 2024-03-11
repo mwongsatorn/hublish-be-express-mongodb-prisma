@@ -642,6 +642,9 @@ async function searchArticles(req: Request, res: Response) {
                   {
                     $project: {
                       _id: 0,
+                      id: {
+                        $toString: "$_id",
+                      },
                       username: 1,
                       name: 1,
                       bio: 1,
@@ -670,52 +673,42 @@ async function searchArticles(req: Request, res: Response) {
                     },
                   },
                 ],
-                as: "loggedInUserFavouriteRelations",
+                as: "loggedInUserFavourite",
               },
             },
-
             {
-              $addFields: {
+              $project: {
+                _id: 0,
                 id: {
                   $toString: "$_id",
                 },
-                author_id: {
-                  $toString: "$author_id",
-                },
+                title: 1,
+                slug: 1,
+                content: 1,
+                tags: 1,
                 createdAt: {
                   $toString: "$createdAt",
                 },
                 updatedAt: {
                   $toString: "$updatedAt",
                 },
-                favourited: {
-                  $cond: {
-                    if: {
-                      $in: [
-                        "$_id",
-                        "$loggedInUserFavouriteRelations.article_id",
-                      ],
-                    },
-                    then: true,
-                    else: false,
-                  },
+                author_id: {
+                  $toString: "$author_id",
                 },
                 author: {
                   $arrayElemAt: ["$author", 0],
                 },
+                favouriteCount: 1,
+                favourited: {
+                  $gt: [{ $size: "$loggedInUserFavourite" }, 0],
+                },
               },
-            },
-            {
-              $unset: ["_id", "loggedInUserFavouriteRelations"],
             },
           ],
         },
       },
       {
         $addFields: {
-          page: {
-            $literal: parseInt(page as string),
-          },
           total_results: {
             $cond: {
               if: {
@@ -730,12 +723,17 @@ async function searchArticles(req: Request, res: Response) {
         },
       },
       {
-        $addFields: {
+        $project: {
+          total_results: 1,
           total_pages: {
             $ceil: {
               $divide: ["$total_results", parseInt(limit as string)],
             },
           },
+          page: {
+            $literal: parseInt(page as string),
+          },
+          results: 1,
         },
       },
     ],
