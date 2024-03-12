@@ -249,119 +249,174 @@ async function unfavouriteArticle(req: Request, res: Response) {
 
 async function getFavouriteArticles(req: Request, res: Response) {
   const { id: loggedInUserId } = req as ArticleRequest;
+  const { limit = 10, page = 1 } = req.query;
   const targetUser = await prisma.user.findUnique({
     where: { username: req.params.username },
   });
+
   if (!targetUser) return res.status(404).send({ error: "User not found." });
 
   const favouriteArticles = await prisma.favourite.aggregateRaw({
     pipeline: [
       {
-        $match: {
-          user_id: {
-            $oid: targetUser.id,
-          },
-        },
-      },
-      {
-        $sort: {
-          createdAt: -1,
-        },
-      },
-      {
-        $lookup: {
-          from: "Article",
-          localField: "article_id",
-          foreignField: "_id",
-          as: "targetFavouriteArticle",
-        },
-      },
-      {
-        $unwind: "$targetFavouriteArticle",
-      },
-      {
-        $lookup: {
-          from: "User",
-          let: {
-            author_id: "$targetFavouriteArticle.author_id",
-          },
-          pipeline: [
+        $facet: {
+          total_results: [
             {
               $match: {
-                $expr: {
-                  $eq: ["$_id", "$$author_id"],
+                user_id: {
+                  $oid: targetUser.id,
                 },
+              },
+            },
+            {
+              $count: "count",
+            },
+          ],
+          results: [
+            {
+              $match: {
+                user_id: {
+                  $oid: targetUser.id,
+                },
+              },
+            },
+            {
+              $sort: {
+                createdAt: -1,
+              },
+            },
+            {
+              $skip: parseInt(limit as string) * (parseInt(page as string) - 1),
+            },
+            {
+              $limit: parseInt(limit as string),
+            },
+            {
+              $lookup: {
+                from: "Article",
+                localField: "article_id",
+                foreignField: "_id",
+                as: "targetFavouriteArticle",
+              },
+            },
+            {
+              $unwind: "$targetFavouriteArticle",
+            },
+            {
+              $lookup: {
+                from: "User",
+                let: {
+                  author_id: "$targetFavouriteArticle.author_id",
+                },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $eq: ["$_id", "$$author_id"],
+                      },
+                    },
+                  },
+                  {
+                    $project: {
+                      _id: 0,
+                      id: {
+                        $toString: "$_id",
+                      },
+                      username: 1,
+                      name: 1,
+                      bio: 1,
+                      image: 1,
+                    },
+                  },
+                ],
+                as: "author",
+              },
+            },
+            {
+              $lookup: {
+                from: "Favourite",
+                let: {
+                  t_article_id: "$article_id",
+                },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $eq: ["$$t_article_id", "$article_id"],
+                      },
+                      user_id: {
+                        $oid: loggedInUserId,
+                      },
+                    },
+                  },
+                ],
+                as: "loggedInUserFavourite",
               },
             },
             {
               $project: {
                 _id: 0,
                 id: {
-                  $toString: "$_id",
+                  $toString: "$targetFavouriteArticle._id",
                 },
-                username: 1,
-                name: 1,
-                bio: 1,
-                image: 1,
+                title: "$targetFavouriteArticle.title",
+                slug: "$targetFavouriteArticle.slug",
+                content: "$targetFavouriteArticle.content",
+                tags: "$targetFavouriteArticle.tags",
+                createdAt: {
+                  $toString: "$targetFavouriteArticle.createdAt",
+                },
+                updatedAt: {
+                  $toString: "$targetFavouriteArticle.updatedAt",
+                },
+                author_id: {
+                  $toString: "$targetFavouriteArticle.author_id",
+                },
+                author: {
+                  $arrayElemAt: ["$author", 0],
+                },
+                favouriteCount: "$targetFavouriteArticle.favouriteCount",
+                favourited: {
+                  $gt: [{ $size: "$loggedInUserFavourite" }, 0],
+                },
               },
             },
           ],
-          as: "author",
         },
       },
       {
-        $lookup: {
-          from: "Favourite",
-          let: {
-            t_article_id: "$article_id",
-          },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $eq: ["$$t_article_id", "$article_id"],
-                },
-                user_id: {
-                  $oid: loggedInUserId,
-                },
+        $addFields: {
+          total_results: {
+            $cond: {
+              if: {
+                $ne: [{ $size: "$total_results" }, 0],
               },
+              then: {
+                $arrayElemAt: ["$total_results.count", 0],
+              },
+              else: 0,
             },
-          ],
-          as: "loggedInUserFavourite",
+          },
         },
       },
       {
         $project: {
-          _id: 0,
-          id: {
-            $toString: "$targetFavouriteArticle._id",
+          total_results: 1,
+          total_pages: {
+            $ceil: {
+              $divide: ["$total_results", parseInt(limit as string)],
+            },
           },
-          title: "$targetFavouriteArticle.title",
-          slug: "$targetFavouriteArticle.slug",
-          content: "$targetFavouriteArticle.content",
-          tags: "$targetFavouriteArticle.tags",
-          createdAt: {
-            $toString: "$targetFavouriteArticle.createdAt",
+          page: {
+            $literal: parseInt(page as string),
           },
-          updatedAt: {
-            $toString: "$targetFavouriteArticle.updatedAt",
-          },
-          author_id: {
-            $toString: "$targetFavouriteArticle.author_id",
-          },
-          author: {
-            $arrayElemAt: ["$author", 0],
-          },
-          favouriteCount: "$targetFavouriteArticle.favouriteCount",
-          favourited: {
-            $gt: [{ $size: "$loggedInUserFavourite" }, 0],
-          },
+          results: 1,
         },
       },
     ],
   });
 
-  res.status(200).send(favouriteArticles);
+  res.status(200).send(favouriteArticles[0]);
 }
 
 async function getFeedArticles(req: Request, res: Response) {
