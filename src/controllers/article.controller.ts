@@ -421,48 +421,122 @@ async function getFavouriteArticles(req: Request, res: Response) {
 
 async function getFeedArticles(req: Request, res: Response) {
   const { id: loggedInUserId } = req as ArticleRequest;
+  const { limit = 10, page = 1 } = req.query;
 
   const feedArticles = await prisma.article.aggregateRaw({
     pipeline: [
       {
-        $lookup: {
-          from: "Follow",
-          pipeline: [
+        $facet: {
+          total_results: [
             {
-              $match: {
-                follower_id: {
-                  $oid: loggedInUserId,
-                },
+              $lookup: {
+                from: "Follow",
+                pipeline: [
+                  {
+                    $match: {
+                      follower_id: {
+                        $oid: loggedInUserId,
+                      },
+                    },
+                  },
+                ],
+                as: "followRelations",
               },
             },
-          ],
-          as: "followRelations",
-        },
-      },
-      {
-        $match: {
-          $expr: {
-            $in: ["$author_id", "$followRelations.following_id"],
-          },
-        },
-      },
-      {
-        $sort: {
-          createdAt: -1,
-        },
-      },
-      {
-        $lookup: {
-          from: "User",
-          let: {
-            author_id: "$author_id",
-          },
-          pipeline: [
             {
               $match: {
                 $expr: {
-                  $eq: ["$_id", "$$author_id"],
+                  $in: ["$author_id", "$followRelations.following_id"],
                 },
+              },
+            },
+            {
+              $count: "count",
+            },
+          ],
+          results: [
+            {
+              $lookup: {
+                from: "Follow",
+                pipeline: [
+                  {
+                    $match: {
+                      follower_id: {
+                        $oid: loggedInUserId,
+                      },
+                    },
+                  },
+                ],
+                as: "followRelations",
+              },
+            },
+            {
+              $match: {
+                $expr: {
+                  $in: ["$author_id", "$followRelations.following_id"],
+                },
+              },
+            },
+            {
+              $sort: {
+                createdAt: -1,
+              },
+            },
+            {
+              $skip: parseInt(limit as string) * (parseInt(page as string) - 1),
+            },
+            {
+              $limit: parseInt(limit as string),
+            },
+            {
+              $lookup: {
+                from: "User",
+                let: {
+                  author_id: "$author_id",
+                },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $eq: ["$_id", "$$author_id"],
+                      },
+                    },
+                  },
+                  {
+                    $project: {
+                      _id: 0,
+                      id: {
+                        $toString: "$_id",
+                      },
+                      username: 1,
+                      name: 1,
+                      bio: 1,
+                      image: 1,
+                    },
+                  },
+                ],
+                as: "author",
+              },
+            },
+            {
+              $lookup: {
+                from: "Favourite",
+                let: {
+                  article_id: "$_id",
+                },
+                pipeline: [
+                  {
+                    $match: {
+                      user_id: {
+                        $oid: loggedInUserId,
+                      },
+                      $expr: {
+                        $eq: ["$article_id", "$$article_id"],
+                      },
+                    },
+                  },
+                ],
+                as: "loggedInUserFavourite",
               },
             },
             {
@@ -471,69 +545,64 @@ async function getFeedArticles(req: Request, res: Response) {
                 id: {
                   $toString: "$_id",
                 },
-                username: 1,
-                name: 1,
-                bio: 1,
-                image: 1,
+                title: 1,
+                slug: 1,
+                content: 1,
+                tags: 1,
+                createdAt: {
+                  $toString: "$createdAt",
+                },
+                updatedAt: {
+                  $toString: "$updatedAt",
+                },
+                author_id: {
+                  $toString: "$author_id",
+                },
+                author: {
+                  $arrayElemAt: ["$author", 0],
+                },
+                favouriteCount: 1,
+                favourited: {
+                  $gt: [{ $size: "$loggedInUserFavourite" }, 0],
+                },
               },
             },
           ],
-          as: "author",
         },
       },
       {
-        $lookup: {
-          from: "Favourite",
-          let: {
-            article_id: "$_id",
-          },
-          pipeline: [
-            {
-              $match: {
-                user_id: {
-                  $oid: loggedInUserId,
-                },
-                $expr: {
-                  $eq: ["$article_id", "$$article_id"],
-                },
+        $addFields: {
+          total_results: {
+            $cond: {
+              if: {
+                $ne: [{ $size: "$total_results" }, 0],
               },
+              then: {
+                $arrayElemAt: ["$total_results.count", 0],
+              },
+              else: 0,
             },
-          ],
-          as: "loggedInUserFavourite",
+          },
         },
       },
       {
         $project: {
-          _id: 0,
-          id: {
-            $toString: "$_id",
+          total_results: 1,
+          total_pages: {
+            $ceil: {
+              $divide: ["$total_results", parseInt(limit as string)],
+            },
           },
-          title: 1,
-          slug: 1,
-          content: 1,
-          tags: 1,
-          createdAt: {
-            $toString: "$createdAt",
+          page: {
+            $literal: parseInt(page as string),
           },
-          updatedAt: {
-            $toString: "$updatedAt",
-          },
-          author_id: {
-            $toString: "$author_id",
-          },
-          author: {
-            $arrayElemAt: ["$author", 0],
-          },
-          favouriteCount: 1,
-          favourited: {
-            $gt: [{ $size: "$loggedInUserFavourite" }, 0],
-          },
+          results: 1,
         },
       },
     ],
   });
 
-  res.status(200).send(feedArticles);
+  res.status(200).send(feedArticles[0]);
 }
 
 async function getUserCreatedArticles(req: Request, res: Response) {
