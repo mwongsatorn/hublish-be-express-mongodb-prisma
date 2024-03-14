@@ -208,7 +208,7 @@ async function favouriteArticle(req: Request, res: Response) {
       },
     });
 
-    res.status(200).send(article);
+    res.status(201).send(article);
   });
 }
 
