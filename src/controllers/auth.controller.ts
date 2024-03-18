@@ -19,7 +19,7 @@ async function signUp(req: Request, res: Response) {
     },
   });
 
-  if (foundUser) return res.sendStatus(409);
+  if (foundUser) return res.status(409).json({error: "Username or Email is already used."});
 
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(user.data.password, salt);
@@ -198,7 +198,7 @@ async function refreshAccessToken(req: Request, res: Response) {
           refreshToken: filteredRefreshTokens,
         },
       });
-      return res.status(401).send({ error: "Token expired" });
+      return res.status(401).send({ error: "Token expired." });
     }
 
     return res.status(500).send({ error: "Internal server error." });
