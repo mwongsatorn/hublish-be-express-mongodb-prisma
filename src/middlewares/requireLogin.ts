@@ -25,8 +25,8 @@ export function requireLogin(req: Request, res: Response, next: NextFunction) {
     return next();
   } catch (e) {
     if (e instanceof jwt.JsonWebTokenError)
-      return res.status(401).send({ error: "Invalid token" });
+      return res.status(401).send({ error: "Invalid token." });
     if (e instanceof jwt.TokenExpiredError)
-      return res.status(401).send({ error: "Token expired" });
+      return res.status(401).send({ error: "Token expired." });
   }
 }
